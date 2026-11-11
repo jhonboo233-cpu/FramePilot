@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets/framepilot.ico</ApplicationIcon>
+    <AssemblyName>FramePilot</AssemblyName>
+    <RootNamespace>FramePilot</RootNamespace>
+    <Version>1.2.0</Version>
+    <Authors>FramePilot</Authors>
+    <Description>Безопасная диагностика и обратимая оптимизация Windows 11 для игр</Description>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="Assets/framepilot.ico" />
+    <EmbeddedResource Include="Assets/PresentMon-2.6.0-x64.exe" LogicalName="FramePilot.PresentMon.exe" />
+    <EmbeddedResource Include="Assets/PresentMon-LICENSE.txt" LogicalName="FramePilot.PresentMon-LICENSE.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.23" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.23" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.23" />
+    <PackageReference Include="Avalonia.Diagnostics" Version="11.3.23" Condition="'$(Configuration)' == 'Debug'" />
+    <PackageReference Include="System.Management" Version="8.0.0" />
+  </ItemGroup>
+</Project>

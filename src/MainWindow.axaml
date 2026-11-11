@@ -1,0 +1,438 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="FramePilot.MainWindow"
+        Width="1380" Height="860" MinWidth="800" MinHeight="600"
+        WindowStartupLocation="CenterScreen" WindowState="Maximized"
+        Icon="avares://FramePilot/Assets/framepilot.ico"
+        Background="#0B1017" Foreground="#EDF2F7"
+        FontFamily="Segoe UI Variable, Segoe UI, Arial"
+        Title="FramePilot — игровая оптимизация Windows 11">
+  <Window.Styles>
+    <Style Selector="TextBlock.h1"><Setter Property="FontSize" Value="30"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Foreground" Value="#F3F6FA"/></Style>
+    <Style Selector="TextBlock.h2"><Setter Property="FontSize" Value="19"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Foreground" Value="#F3F6FA"/></Style>
+    <Style Selector="TextBlock.h3"><Setter Property="FontSize" Value="15"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Foreground" Value="#EDF2F7"/></Style>
+    <Style Selector="TextBlock.muted"><Setter Property="Foreground" Value="#94A0B3"/><Setter Property="TextWrapping" Value="Wrap"/></Style>
+    <Style Selector="TextBlock.small"><Setter Property="FontSize" Value="12"/><Setter Property="Foreground" Value="#94A0B3"/></Style>
+    <Style Selector="Border.panel"><Setter Property="Background" Value="#111924"/><Setter Property="BorderBrush" Value="#243041"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="14"/><Setter Property="Padding" Value="22"/></Style>
+    <Style Selector="Border.stat"><Setter Property="Background" Value="#101823"/><Setter Property="BorderBrush" Value="#202C3B"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="12"/><Setter Property="Padding" Value="18"/></Style>
+    <Style Selector="Border.notice"><Setter Property="Background" Value="#102421"/><Setter Property="BorderBrush" Value="#245447"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="12"/><Setter Property="Padding" Value="16"/></Style>
+    <Style Selector="Button">
+      <Setter Property="FontFamily" Value="Segoe UI Variable, Segoe UI, Arial"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="MinHeight" Value="42"/>
+      <Setter Property="Padding" Value="18,10"/>
+      <Setter Property="CornerRadius" Value="9"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.primary"><Setter Property="Background" Value="#65E1B4"/><Setter Property="Foreground" Value="#082019"/><Setter Property="BorderThickness" Value="0"/></Style>
+    <Style Selector="Button.primary:pointerover"><Setter Property="Background" Value="#83EBC6"/></Style>
+    <Style Selector="Button.primary:pressed"><Setter Property="Background" Value="#4EC99D"/></Style>
+    <Style Selector="Button.secondary"><Setter Property="Background" Value="#1A2635"/><Setter Property="Foreground" Value="#E7EDF5"/><Setter Property="BorderBrush" Value="#314057"/><Setter Property="BorderThickness" Value="1"/></Style>
+    <Style Selector="Button.secondary:pointerover"><Setter Property="Background" Value="#223247"/><Setter Property="BorderBrush" Value="#4A607E"/></Style>
+    <Style Selector="Button.ghost"><Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#A9B5C6"/><Setter Property="BorderThickness" Value="0"/></Style>
+    <Style Selector="Button.ghost:pointerover"><Setter Property="Background" Value="#182331"/><Setter Property="Foreground" Value="#F2F5F9"/></Style>
+    <Style Selector="Button.danger"><Setter Property="Background" Value="#392328"/><Setter Property="Foreground" Value="#FFB4B4"/><Setter Property="BorderBrush" Value="#62353E"/><Setter Property="BorderThickness" Value="1"/></Style>
+    <Style Selector="Button.danger:pointerover"><Setter Property="Background" Value="#4A2931"/></Style>
+    <Style Selector="Button:disabled"><Setter Property="Opacity" Value="0.5"/><Setter Property="Cursor" Value="Arrow"/></Style>
+    <Style Selector="Button.nav">
+      <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#96A3B6"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/><Setter Property="Padding" Value="14,11"/>
+      <Setter Property="Margin" Value="0,2"/><Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector="Button.nav:pointerover"><Setter Property="Background" Value="#131E2A"/><Setter Property="Foreground" Value="#E7EDF5"/></Style>
+    <Style Selector="Button.nav.selected"><Setter Property="Background" Value="#18342F"/><Setter Property="Foreground" Value="#73E4BB"/></Style>
+    <Style Selector="TextBox">
+      <Setter Property="Background" Value="#0D151F"/><Setter Property="Foreground" Value="#EDF2F7"/>
+      <Setter Property="BorderBrush" Value="#2C394C"/><Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="8"/><Setter Property="MinHeight" Value="42"/>
+      <Setter Property="Padding" Value="12,8"/>
+    </Style>
+    <Style Selector="TextBox:focus"><Setter Property="BorderBrush" Value="#65E1B4"/></Style>
+    <Style Selector="ToggleSwitch"><Setter Property="OffContent" Value=""/><Setter Property="OnContent" Value=""/><Setter Property="MinWidth" Value="52"/></Style>
+    <Style Selector="ProgressBar"><Setter Property="Foreground" Value="#65E1B4"/><Setter Property="Background" Value="#202C3B"/><Setter Property="MinHeight" Value="4"/></Style>
+    <Style Selector="ScrollViewer"><Setter Property="VerticalScrollBarVisibility" Value="Auto"/></Style>
+  </Window.Styles>
+
+  <Grid ColumnDefinitions="238,*">
+    <Border Grid.Column="0" Background="#0E151F" BorderBrush="#202B39" BorderThickness="0,0,1,0">
+      <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="18">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12" Margin="8,8,0,32">
+          <Border Width="42" Height="42" CornerRadius="12" Background="#65E1B4">
+            <Path Width="23" Height="23" HorizontalAlignment="Center" VerticalAlignment="Center" Fill="#0B211A"
+                  Data="M13,1 L4,13 L10,13 L8,23 L19,9 L13,9 Z"/>
+          </Border>
+          <StackPanel VerticalAlignment="Center" Spacing="1">
+            <TextBlock Text="FramePilot" FontSize="21" FontWeight="Bold"/>
+            <TextBlock Text="GAMING CONTROL" FontSize="10" Foreground="#65E1B4" FontWeight="SemiBold"/>
+          </StackPanel>
+        </StackPanel>
+
+        <TextBlock Grid.Row="1" Text="УПРАВЛЕНИЕ" FontSize="11" FontWeight="SemiBold" Foreground="#637187" Margin="12,0,0,10"/>
+
+        <StackPanel Grid.Row="2">
+          <Button x:Name="NavAudit" Classes="nav selected" Click="Navigate_Click">
+            <Grid ColumnDefinitions="30,*">
+              <Path Width="18" Height="18" Data="M2,11 L7,11 L9,5 L13,17 L16,11 L22,11 M2,21 L22,21" Stroke="#8D9AAF" StrokeThickness="1.7"/>
+              <StackPanel Grid.Column="1" Spacing="1">
+                <TextBlock Text="Диагностика"/><TextBlock Text="AUDIT" FontSize="10" Opacity="0.6"/>
+              </StackPanel>
+            </Grid>
+          </Button>
+          <Button x:Name="NavOptimize" Classes="nav" Click="Navigate_Click">
+            <Grid ColumnDefinitions="30,*">
+              <Path Width="18" Height="18" Data="M3,5 L21,5 M3,12 L21,12 M3,19 L21,19 M8,2 L8,8 M16,9 L16,15 M10,16 L10,22" Stroke="#8D9AAF" StrokeThickness="1.7"/>
+              <StackPanel Grid.Column="1" Spacing="1">
+                <TextBlock Text="Оптимизация"/><TextBlock Text="OPTIMIZE" FontSize="10" Opacity="0.6"/>
+              </StackPanel>
+            </Grid>
+          </Button>
+          <Button x:Name="NavRestore" Classes="nav" Click="Navigate_Click">
+            <Grid ColumnDefinitions="30,*">
+              <Path Width="18" Height="18" Data="M4,9 L4,3 L10,3 M4,4 C8,0 17,2 20,8 C23,15 17,22 10,21 C5,20 2,16 3,12" Stroke="#8D9AAF" StrokeThickness="1.7"/>
+              <StackPanel Grid.Column="1" Spacing="1">
+                <TextBlock Text="Откат"/><TextBlock Text="RESTORE" FontSize="10" Opacity="0.6"/>
+              </StackPanel>
+            </Grid>
+          </Button>
+          <Button x:Name="NavBenchmark" Classes="nav" Click="Navigate_Click">
+            <Grid ColumnDefinitions="30,*">
+              <Path Width="18" Height="18" Data="M3,21 L3,13 L8,13 L8,21 M10,21 L10,7 L15,7 L15,21 M17,21 L17,2 L22,2 L22,21 M1,21 L24,21" Stroke="#8D9AAF" StrokeThickness="1.7"/>
+              <StackPanel Grid.Column="1" Spacing="1">
+                <TextBlock Text="Бенчмарк"/><TextBlock Text="BENCHMARK" FontSize="10" Opacity="0.6"/>
+              </StackPanel>
+            </Grid>
+          </Button>
+        </StackPanel>
+
+        <StackPanel Grid.Row="3" Spacing="12">
+          <Border Background="#111D28" CornerRadius="10" Padding="12">
+            <StackPanel Spacing="5">
+              <TextBlock Text="Безопасный подход" FontSize="13" FontWeight="SemiBold" Foreground="#B7C4D5"/>
+              <TextBlock Classes="small" TextWrapping="Wrap" Text="Без разгона, отключения защиты и скрытых твиков."/>
+            </StackPanel>
+          </Border>
+          <TextBlock Text="Версия 1.2 • Windows 11 x64" FontSize="11" Foreground="#5F6D81" Margin="8,0,0,4"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto" Margin="30,24,30,0">
+      <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,24">
+        <StackPanel Spacing="6">
+          <TextBlock x:Name="PageTitle" Classes="h1" Text="Диагностика системы"/>
+          <TextBlock x:Name="PageSubtitle" Classes="muted" FontSize="14" Text="Сначала понимаем ограничение — затем меняем настройки."/>
+        </StackPanel>
+        <Button x:Name="AdminButton" Grid.Column="1" Classes="secondary" VerticalAlignment="Center" Click="Admin_Click"/>
+      </Grid>
+
+      <Grid Grid.Row="1">
+        <ScrollViewer x:Name="AuditView">
+          <StackPanel Spacing="18" Margin="0,0,4,24">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Spacing="4" VerticalAlignment="Center">
+                <TextBlock Classes="h2" Text="Контрольная точка"/>
+                <TextBlock Classes="muted" Text="Проверка только читает данные и ничего не меняет."/>
+              </StackPanel>
+              <Button x:Name="RunAuditButton" Grid.Column="1" Classes="primary" Content="Запустить диагностику" Click="RunAudit_Click"/>
+            </Grid>
+            <ProgressBar x:Name="AuditProgress" IsIndeterminate="True" IsVisible="False"/>
+
+            <Grid ColumnDefinitions="*,*,*,*" RowDefinitions="Auto">
+              <Border Grid.Column="0" Classes="stat" Margin="0,0,12,0">
+                <StackPanel Spacing="9"><TextBlock Classes="small" Text="ПРОЦЕССОР"/><TextBlock x:Name="CpuText" Classes="h3" TextWrapping="Wrap" Text="Ожидает проверки"/><TextBlock x:Name="CpuDetailsText" Classes="small" TextWrapping="Wrap" Text="Модель и количество потоков"/></StackPanel>
+              </Border>
+              <Border Grid.Column="1" Classes="stat" Margin="0,0,12,0">
+                <StackPanel Spacing="9"><TextBlock Classes="small" Text="ВИДЕОКАРТА"/><TextBlock x:Name="GpuText" Classes="h3" TextWrapping="Wrap" Text="Ожидает проверки"/><TextBlock x:Name="GpuDetailsText" Classes="small" TextWrapping="Wrap" Text="Модель и версия драйвера"/></StackPanel>
+              </Border>
+              <Border Grid.Column="2" Classes="stat" Margin="0,0,12,0">
+                <StackPanel Spacing="9"><TextBlock Classes="small" Text="ПАМЯТЬ"/><TextBlock x:Name="MemoryText" Classes="h3" TextWrapping="Wrap" Text="Ожидает проверки"/><TextBlock x:Name="MemoryDetailsText" Classes="small" TextWrapping="Wrap" Text="Объём и частота модулей"/><TextBlock x:Name="MemoryChannelText" FontSize="13" FontWeight="SemiBold" Foreground="#65E1B4" TextWrapping="Wrap" Text="Канальный режим не проверен"/><TextBlock x:Name="MemoryChannelDetailsText" Classes="small" TextWrapping="Wrap" Text=""/></StackPanel>
+              </Border>
+              <Border Grid.Column="3" Classes="stat">
+                <StackPanel Spacing="9"><TextBlock Classes="small" Text="СИСТЕМА"/><TextBlock x:Name="WindowsText" Classes="h3" TextWrapping="Wrap" Text="Ожидает проверки"/><TextBlock x:Name="WindowsDetailsText" Classes="small" TextWrapping="Wrap" Text="Версия и сборка Windows"/></StackPanel>
+              </Border>
+            </Grid>
+
+            <Grid ColumnDefinitions="2.1*,1*" Margin="0,2,0,0">
+              <Border Grid.Column="0" Classes="panel" Margin="0,0,16,0">
+                <StackPanel Spacing="16">
+                  <Grid ColumnDefinitions="*,Auto"><TextBlock Classes="h2" Text="Результаты проверки"/><TextBlock x:Name="FindingCount" Grid.Column="1" Classes="small" VerticalAlignment="Center" Text="0 записей"/></Grid>
+                  <ItemsControl x:Name="FindingsList">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border BorderBrush="#243041" BorderThickness="0,0,0,1" Padding="0,0,0,15" Margin="0,0,0,15">
+                          <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+                            <Ellipse Width="9" Height="9" Fill="{Binding Color}" Margin="0,6,12,0"/>
+                            <TextBlock Grid.Column="1" Classes="h3" Text="{Binding Title}" TextWrapping="Wrap"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Classes="muted" FontSize="13" Margin="0,6,0,0" Text="{Binding Description}" TextWrapping="Wrap"/>
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+              <StackPanel Grid.Column="1" Spacing="16">
+                <Border Classes="notice">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="h3" Foreground="#72E2B9" Text="Сохраняем контроль"/>
+                    <TextBlock Classes="muted" FontSize="13" Text="Перед оптимизацией сохраняются исходные значения. Любое применённое изменение можно вернуть в разделе «Откат»." TextWrapping="Wrap"/>
+                  </StackPanel>
+                </Border>
+                <Border Classes="panel">
+                  <StackPanel Spacing="12">
+                    <TextBlock Classes="h3" Text="Не входит в оптимизацию"/>
+                    <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="• BIOS и разгон&#10;• обновление драйверов&#10;• отключение защиты&#10;• удаление служб Windows&#10;• очистка кэша шейдеров"/>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+
+        <ScrollViewer x:Name="OptimizeView" IsVisible="False">
+          <StackPanel Spacing="18" Margin="0,0,4,24">
+            <Border Classes="notice">
+              <Grid ColumnDefinitions="Auto,*">
+                <Path Width="22" Height="22" Fill="#65E1B4" Margin="0,0,14,0" Data="M12,1 L22,5 L22,11 C22,17 18,21 12,23 C6,21 2,17 2,11 L2,5 Z M7,12 L10,15 L17,8 L15,6 L10,11 L9,10 Z"/>
+                <TextBlock Grid.Column="1" Classes="muted" Foreground="#B7DCCF" Text="Выбирайте только нужные параметры. HAGS — экспериментальная A/B-настройка, а не гарантированный прирост." TextWrapping="Wrap"/>
+              </Grid>
+            </Border>
+            <Grid ColumnDefinitions="1.65*,1*">
+              <Border Grid.Column="0" Classes="panel" Margin="0,0,16,0">
+                <StackPanel Spacing="4">
+                  <TextBlock Classes="h2" Text="Параметры Windows" Margin="0,0,0,12"/>
+                  <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,18">
+                    <StackPanel Spacing="5" Margin="0,0,20,0"><StackPanel Orientation="Horizontal" Spacing="10"><TextBlock Classes="h3" Text="Режим игры"/><TextBlock Classes="small" Foreground="#65E1B4" Text="РЕКОМЕНДУЕТСЯ" VerticalAlignment="Center"/></StackPanel><TextBlock Classes="muted" FontSize="13" Text="Включает штатный игровой режим Windows 11." TextWrapping="Wrap"/></StackPanel>
+                    <ToggleSwitch x:Name="GameModeToggle" Grid.Column="1" IsChecked="True" VerticalAlignment="Center" IsCheckedChanged="Option_Changed"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,18">
+                    <StackPanel Spacing="5" Margin="0,0,20,0"><TextBlock Classes="h3" Text="Фоновая запись клипов"/><TextBlock Classes="muted" FontSize="13" Text="Отключает запись Xbox Game Bar. Ручные скриншоты системы не затрагиваются." TextWrapping="Wrap"/></StackPanel>
+                    <ToggleSwitch x:Name="CaptureToggle" Grid.Column="1" IsChecked="True" VerticalAlignment="Center" IsCheckedChanged="Option_Changed"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,18">
+                    <StackPanel Spacing="5" Margin="0,0,20,0"><TextBlock Classes="h3" Text="Высокая производительность"/><TextBlock Classes="muted" FontSize="13" Text="Переключает схему питания. На современных CPU прирост не гарантирован; возможен нагрев." TextWrapping="Wrap"/></StackPanel>
+                    <ToggleSwitch x:Name="PowerToggle" Grid.Column="1" IsChecked="False" VerticalAlignment="Center" IsCheckedChanged="Option_Changed"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,18">
+                    <StackPanel Spacing="5" Margin="0,0,20,0"><TextBlock Classes="h3" Text="Временная остановка служб"/><TextBlock Classes="muted" FontSize="13" Text="Останавливает только работающие Windows Search, диспетчер печати и факс. Тип запуска не меняется. Поиск и печать будут недоступны до отката. Требуются права администратора." TextWrapping="Wrap"/></StackPanel>
+                    <ToggleSwitch x:Name="ServicesToggle" Grid.Column="1" IsChecked="False" VerticalAlignment="Center" IsCheckedChanged="Option_Changed"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,18">
+                    <StackPanel Spacing="5" Margin="0,0,20,0"><TextBlock Classes="h3" Text="Кэш шейдеров"/><TextBlock Classes="muted" FontSize="13" Text="Проверяет папки DirectX и драйверов, доступность записи и свободное место; создаёт стандартную папку DirectX при отсутствии. Ничего не удаляет — очистка кэша может временно ухудшить плавность." TextWrapping="Wrap"/></StackPanel>
+                    <ToggleSwitch x:Name="ShaderCacheToggle" Grid.Column="1" IsChecked="False" VerticalAlignment="Center" IsCheckedChanged="Option_Changed"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,18">
+                    <StackPanel Spacing="5" Margin="0,0,20,0"><StackPanel Orientation="Horizontal" Spacing="10"><TextBlock Classes="h3" Text="HAGS"/><TextBlock Classes="small" Foreground="#F3B95F" Text="A/B-ТЕСТ" VerticalAlignment="Center"/></StackPanel><TextBlock Classes="muted" FontSize="13" Text="Hardware-Accelerated GPU Scheduling — аппаратно ускоренное планирование GPU. Видеокарта берёт на себя часть задач планирования кадров. Эффект зависит от GPU, драйвера и игры: средний FPS, 1% Low и задержка могут улучшиться, не измениться или ухудшиться. Требуются администратор и перезагрузка." TextWrapping="Wrap"/></StackPanel>
+                    <ToggleSwitch x:Name="HagsToggle" Grid.Column="1" IsChecked="False" VerticalAlignment="Center" IsCheckedChanged="Option_Changed"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="5" Margin="0,0,20,0"><TextBlock Classes="h3" Text="Точка восстановления Windows"/><TextBlock Classes="muted" FontSize="13" Text="Дополнительная защита. Если Windows откажет, локальная резервная копия всё равно создастся." TextWrapping="Wrap"/></StackPanel>
+                    <ToggleSwitch x:Name="RestorePointToggle" Grid.Column="1" IsChecked="True" VerticalAlignment="Center" IsCheckedChanged="Option_Changed"/>
+                  </Grid>
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="1" Classes="panel">
+                <StackPanel Spacing="16">
+                  <TextBlock Classes="h2" Text="План изменений"/>
+                  <ItemsControl x:Name="PlanList">
+                    <ItemsControl.ItemTemplate><DataTemplate><StackPanel Orientation="Horizontal" Margin="0,0,0,11"><TextBlock Text="—" Foreground="#65E1B4" Margin="0,0,9,0"/><TextBlock Classes="muted" FontSize="13" Text="{Binding}" TextWrapping="Wrap"/></StackPanel></DataTemplate></ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <Button x:Name="ApplyButton" Classes="primary" Content="Применить выбранное" Click="Apply_Click"/>
+                  <TextBlock Classes="small" TextWrapping="Wrap" Text="Перед применением появится подтверждение. Старые значения сохранятся автоматически."/>
+                </StackPanel>
+              </Border>
+            </Grid>
+            <Border Classes="notice" Padding="18">
+              <StackPanel Spacing="9">
+                <TextBlock Classes="h3" Foreground="#72E2B9" Text="Как провести A/B-тест HAGS"/>
+                <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="A — исходный режим: закройте фоновые программы, выберите одну игровую сцену и сделайте минимум 3 одинаковых замера среднего FPS и 1% Low. Зафиксируйте версию драйвера, настройки графики и температуру.&#10;B — тестируемый режим: включите только HAGS, перезагрузите ПК и повторите те же 3 замера без изменения других параметров.&#10;Сравнение: используйте средний результат каждой серии. Если разница в пределах обычного разброса, прирост не подтверждён. Если 1% Low или плавность ухудшились, отключите HAGS через «Откат» и снова перезагрузите ПК. Для повторного теста вручную верните прежнее значение HAGS в Windows и сравните в обратную сторону."/>
+              </StackPanel>
+            </Border>
+            <Border Classes="panel" Padding="18">
+              <StackPanel Spacing="10"><TextBlock Classes="h3" Text="Журнал операции"/><TextBox x:Name="OptimizeLog" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="120" MaxHeight="230" Text="Операция ещё не выполнялась."/></StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
+        <ScrollViewer x:Name="RestoreView" IsVisible="False">
+          <StackPanel Spacing="18" Margin="0,0,4,24">
+            <Grid ColumnDefinitions="1.5*,1*">
+              <Border Grid.Column="0" Classes="panel" Margin="0,0,16,0">
+                <StackPanel Spacing="18">
+                  <StackPanel Spacing="5"><TextBlock Classes="h2" Text="Последняя резервная копия"/><TextBlock Classes="muted" FontSize="13" Text="Содержит только параметры, изменённые FramePilot."/></StackPanel>
+                  <StackPanel x:Name="BackupEmpty" Spacing="16" Margin="0,18">
+                    <Border Width="56" Height="56" CornerRadius="16" Background="#1A2635" HorizontalAlignment="Left">
+                      <Path Width="26" Height="26" Stroke="#8291A5" StrokeThickness="1.7" Data="M4,9 L4,3 L10,3 M4,4 C8,0 17,2 20,8 C23,15 17,22 10,21 C5,20 2,16 3,12"/>
+                    </Border>
+                    <TextBlock Classes="h3" Text="Резервной копии пока нет"/>
+                    <TextBlock Classes="muted" Text="Она появится после первого применения настроек. Восстанавливать исходное состояние сейчас не требуется." TextWrapping="Wrap"/>
+                  </StackPanel>
+                  <StackPanel x:Name="BackupInfo" IsVisible="False" Spacing="15">
+                    <TextBlock x:Name="BackupDate" Classes="h3" Foreground="#65E1B4"/>
+                    <ItemsControl x:Name="BackupChangesList">
+                      <ItemsControl.ItemTemplate><DataTemplate><TextBlock Classes="muted" FontSize="13" Margin="0,0,0,8" Text="{Binding}"/></DataTemplate></ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock x:Name="BackupPathText" Classes="small" TextWrapping="Wrap"/>
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Button x:Name="RestoreButton" Classes="primary" Content="Восстановить настройки" Click="Restore_Click"/>
+                    <Button Classes="secondary" Content="Обновить" Click="RefreshBackup_Click"/>
+                    <Button Classes="ghost" Content="Открыть папку" Click="OpenBackupFolder_Click"/>
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="1" Classes="panel">
+                <StackPanel Spacing="14">
+                  <TextBlock Classes="h2" Text="Что будет восстановлено"/>
+                  <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="• исходные значения реестра;&#10;• прежняя схема электропитания;&#10;• состояние HAGS, если оно менялось;&#10;• запуск только тех служб из списка, которые работали до оптимизации."/>
+                  <Border Background="#241E16" BorderBrush="#4B3D26" CornerRadius="10" Padding="14">
+                    <TextBlock Classes="muted" Foreground="#E7C987" FontSize="13" TextWrapping="Wrap" Text="Для HAGS после отката рекомендуется перезагрузка. Удаление точки восстановления Windows не выполняется."/>
+                  </Border>
+                </StackPanel>
+              </Border>
+            </Grid>
+            <Border Classes="panel" Padding="18">
+              <StackPanel Spacing="10"><TextBlock Classes="h3" Text="Журнал восстановления"/><TextBox x:Name="RestoreLog" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="150" MaxHeight="260" Text="Операция ещё не выполнялась."/></StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
+        <ScrollViewer x:Name="BenchmarkView" IsVisible="False">
+          <StackPanel Spacing="18" Margin="0,0,4,24">
+            <Border Classes="panel">
+              <StackPanel Spacing="16">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Spacing="5"><TextBlock Classes="h2" Text="Игровой проект замера"/><TextBlock Classes="muted" FontSize="13" Text="Один проект объединяет игру, неизменную тестовую сцену и все серии ДО / ПОСЛЕ."/></StackPanel>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <ComboBox x:Name="ProjectSelector" MinWidth="230" MinHeight="42" SelectionChanged="ProjectSelector_Changed" PlaceholderText="Выберите проект">
+                      <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding DisplayName}"/></DataTemplate></ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Button x:Name="NewProjectButton" Classes="secondary" Content="Новый проект" Click="NewProject_Click"/>
+                  </StackPanel>
+                </Grid>
+                <Grid ColumnDefinitions="1.45*,1*">
+                  <StackPanel Grid.Column="0" Spacing="12" Margin="0,0,20,0">
+                    <TextBox x:Name="ProjectNameInput" Watermark="Название: Cyberpunk 2077 — Ultra — тест 1"/>
+                    <Grid ColumnDefinitions="*,Auto"><TextBox x:Name="GamePathInput" Watermark="Путь к исполняемому файлу игры (.exe)"/><Button Grid.Column="1" Classes="secondary" Margin="10,0,0,0" Content="Выбрать EXE" Click="BrowseGame_Click"/></Grid>
+                    <TextBox x:Name="SceneInput" Watermark="Сцена: встроенный бенчмарк или одинаковый маршрут"/>
+                    <Grid ColumnDefinitions="*,*,100">
+                      <TextBox Grid.Column="0" x:Name="ResolutionInput" Watermark="2560×1440" Margin="0,0,10,0"/>
+                      <TextBox Grid.Column="1" x:Name="GraphicsPresetInput" Watermark="Ultra, без FG" Margin="0,0,10,0"/>
+                      <TextBox Grid.Column="2" x:Name="DurationInput" Text="60" Watermark="Секунды"/>
+                    </Grid>
+                    <TextBlock Classes="small" Text="Длительность автоматического захвата: 15–600 секунд. Не меняйте сцену и настройки между сериями." TextWrapping="Wrap"/>
+                  </StackPanel>
+                  <Border Grid.Column="1" Classes="notice">
+                    <StackPanel Spacing="10">
+                      <TextBlock x:Name="BenchmarkStageTitle" Classes="h3" Foreground="#72E2B9" Text="Шаг 1 — зафиксируйте результат ДО"/>
+                      <TextBlock x:Name="BenchmarkStageText" Classes="muted" FontSize="13" TextWrapping="Wrap" Text="Создайте проект до применения оптимизаций. Базовый замер станет точкой сравнения."/>
+                      <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button x:Name="SaveProjectButton" Classes="secondary" Content="Создать проект" Click="SaveProject_Click"/>
+                        <Button x:Name="OpenRunFolderButton" Classes="ghost" Content="Папка файлов" Click="OpenRunFolder_Click" IsEnabled="False"/>
+                      </StackPanel>
+                    </StackPanel>
+                  </Border>
+                </Grid>
+              </StackPanel>
+            </Border>
+
+            <Grid ColumnDefinitions="1.45*,1*">
+              <Border Grid.Column="0" Classes="panel" Margin="0,0,16,0">
+                <StackPanel Spacing="14">
+                  <StackPanel Spacing="5"><TextBlock Classes="h2" Text="Автоматический захват кадров"/><TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="PresentMon работает отдельным ETW-процессом и не внедряется в игру. Сначала запустите игру и дойдите до тестовой сцены, затем начните захват. При необходимости Windows запросит права администратора для PresentMon."/></StackPanel>
+                  <StackPanel Spacing="10">
+                    <WrapPanel Orientation="Horizontal" ItemSpacing="10" LineSpacing="10">
+                      <Button x:Name="LaunchGameButton" Classes="secondary" Content="Запустить игру" Click="LaunchGame_Click" IsEnabled="False"/>
+                      <Button x:Name="CaptureButton" Classes="primary" Content="Замер ДО" Click="CaptureBefore_Click" IsEnabled="False"/>
+                      <Button x:Name="AfterCaptureButton" Classes="primary" Content="Замер ПОСЛЕ" Click="CaptureAfter_Click" IsVisible="False"/>
+                      <Button x:Name="CancelCaptureButton" Classes="danger" Content="Остановить" Click="CancelCapture_Click" IsVisible="False"/>
+                    </WrapPanel>
+                    <Button x:Name="GoOptimizeButton" Classes="secondary" Content="Перейти к оптимизации" HorizontalAlignment="Left" Click="GoOptimize_Click" IsVisible="False"/>
+                  </StackPanel>
+                  <ProgressBar x:Name="CaptureProgress" Minimum="0" Maximum="100" Value="0" IsVisible="False"/>
+                  <TextBlock x:Name="CaptureStatusText" Classes="small" TextWrapping="Wrap" Text="CSV и итоговый отчёт сохраняются автоматически после каждого захвата."/>
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="1" Classes="stat">
+                <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto">
+                  <StackPanel Grid.Column="0" Spacing="6" Margin="0,0,14,0"><TextBlock Classes="small" Text="ПАМЯТЬ"/><TextBlock x:Name="BenchmarkMemoryText" Classes="h3" Text="Определение…"/></StackPanel>
+                  <StackPanel Grid.Column="1" Spacing="6" Margin="0,0,14,0"><TextBlock Classes="small" Text="ЧАСТОТА"/><TextBlock x:Name="BenchmarkMemorySpeedText" Classes="h3" TextWrapping="Wrap" Text="Определение…"/></StackPanel>
+                  <StackPanel Grid.Column="2" Spacing="6"><TextBlock Classes="small" Text="КАНАЛЫ"/><TextBlock x:Name="BenchmarkMemoryChannelText" Classes="h3" Foreground="#65E1B4" TextWrapping="Wrap" Text="Определение…"/></StackPanel>
+                  <TextBlock Grid.Row="1" Grid.ColumnSpan="3" x:Name="BenchmarkMemoryDetailsText" Classes="small" TextWrapping="Wrap" Margin="0,10,0,0" Text="Конфигурация сохраняется вместе с каждым захватом."/>
+                </Grid>
+              </Border>
+            </Grid>
+
+            <Border Classes="panel" Padding="18">
+              <Grid ColumnDefinitions="Auto,*,*,*,Auto,Auto" VerticalAlignment="Center">
+                <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,18,0"><TextBlock Classes="h3" Text="Ручной режим"/><TextBlock Classes="small" Text="Если автозахват недоступен"/></StackPanel>
+                <TextBox Grid.Column="1" x:Name="ManualAvgInput" Watermark="Средний FPS" Margin="0,0,10,0"/>
+                <TextBox Grid.Column="2" x:Name="ManualLow1Input" Watermark="1% Low" Margin="0,0,10,0"/>
+                <TextBox Grid.Column="3" x:Name="ManualLow01Input" Watermark="0.1% Low" Margin="0,0,10,0"/>
+                <Button Grid.Column="4" x:Name="ManualCaptureButton" Classes="secondary" Content="ДО" Click="ManualBefore_Click" IsEnabled="False"/>
+                <Button Grid.Column="5" x:Name="ManualAfterButton" Classes="secondary" Content="ПОСЛЕ" Margin="10,0,0,0" Click="ManualAfter_Click" IsVisible="False"/>
+              </Grid>
+            </Border>
+
+            <Border x:Name="ComparisonResult" Classes="panel" IsVisible="False">
+              <StackPanel Spacing="16">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Spacing="5"><TextBlock x:Name="ComparisonTitle" Classes="h2" Text="Сравнение ДО / ПОСЛЕ"/><TextBlock x:Name="ComparisonText" Classes="muted" FontSize="13" TextWrapping="Wrap"/></StackPanel>
+                  <TextBlock Grid.Column="1" Classes="small" VerticalAlignment="Center" Text="Порог подтверждения: ±3 %"/>
+                </Grid>
+                <Grid ColumnDefinitions="*,*,*,*">
+                  <Border Grid.Column="0" Classes="stat" Margin="0,0,12,0"><StackPanel Spacing="7"><TextBlock Classes="small" Text="СРЕДНИЙ FPS"/><TextBlock x:Name="AvgResultText" Classes="h3"/><TextBlock x:Name="AvgDeltaText" FontSize="22" FontWeight="Bold"/><TextBlock x:Name="AvgStatusText" Classes="small" TextWrapping="Wrap"/></StackPanel></Border>
+                  <Border Grid.Column="1" Classes="stat" Margin="0,0,12,0"><StackPanel Spacing="7"><TextBlock Classes="small" Text="1% LOW"/><TextBlock x:Name="Low1ResultText" Classes="h3"/><TextBlock x:Name="Low1DeltaText" FontSize="22" FontWeight="Bold"/><TextBlock x:Name="Low1StatusText" Classes="small" TextWrapping="Wrap"/></StackPanel></Border>
+                  <Border Grid.Column="2" Classes="stat" Margin="0,0,12,0"><StackPanel Spacing="7"><TextBlock Classes="small" Text="0.1% LOW"/><TextBlock x:Name="Low01ResultText" Classes="h3"/><TextBlock x:Name="Low01DeltaText" FontSize="22" FontWeight="Bold"/><TextBlock x:Name="Low01StatusText" Classes="small" TextWrapping="Wrap"/></StackPanel></Border>
+                  <Border Grid.Column="3" Classes="stat"><StackPanel Spacing="7"><TextBlock Classes="small" Text="ВРЕМЯ КАДРА"/><TextBlock x:Name="FrameTimeResultText" Classes="h3"/><TextBlock x:Name="FrameTimeDeltaText" FontSize="22" FontWeight="Bold"/><TextBlock x:Name="FrameTimeStatusText" Classes="small" TextWrapping="Wrap"/></StackPanel></Border>
+                </Grid>
+                <TextBlock x:Name="ComparisonWarningsText" Classes="muted" Foreground="#E7C987" FontSize="13" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
+
+            <Grid ColumnDefinitions="1.45*,1*">
+              <Border Grid.Column="0" Classes="panel" Margin="0,0,16,0">
+                <StackPanel Spacing="14">
+                  <TextBlock Classes="h2" Text="Замеры активного проекта"/>
+                  <TextBlock x:Name="HistoryEmpty" Classes="muted" Text="Захватов пока нет. Первый результат станет базовым ДО."/>
+                  <ItemsControl x:Name="CaptureHistoryList">
+                    <ItemsControl.ItemTemplate><DataTemplate>
+                      <Border BorderBrush="#243041" BorderThickness="0,0,0,1" Padding="0,0,0,12" Margin="0,0,0,12">
+                        <Grid ColumnDefinitions="Auto,2*,3*">
+                          <TextBlock Grid.Column="0" Classes="h3" Foreground="#65E1B4" Text="{Binding StageLabel}" Margin="0,0,16,0"/>
+                          <StackPanel Grid.Column="1" Spacing="3"><TextBlock Classes="h3" Text="{Binding CreatedAt}"/><TextBlock Classes="small" Text="{Binding ModeLabel}"/></StackPanel>
+                          <TextBlock Grid.Column="2" Classes="muted" TextWrapping="Wrap" Text="{Binding Summary}"/>
+                        </Grid>
+                      </Border>
+                    </DataTemplate></ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="1" Classes="panel">
+                <StackPanel Spacing="15">
+                  <TextBlock Classes="h2" Text="Короткий CPU-тест"/>
+                  <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="Дополнительный контроль вычислений, не игровой FPS-тест."/>
+                  <Button x:Name="RunCpuButton" Classes="secondary" Content="Запустить CPU-тест" Click="RunCpu_Click"/>
+                  <ProgressBar x:Name="CpuProgress" IsIndeterminate="True" IsVisible="False"/>
+                  <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
+                    <StackPanel Grid.Column="0" Spacing="4"><TextBlock Classes="small" Text="ОДИН ПОТОК"/><TextBlock x:Name="CpuSingleText" Classes="h3" Text="—"/></StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="4"><TextBlock Classes="small" Text="ВСЕ ПОТОКИ"/><TextBlock x:Name="CpuMultiText" Classes="h3" Text="—"/></StackPanel>
+                    <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Spacing="4" Margin="0,10,0,0"><TextBlock Classes="small" Text="СРАВНЕНИЕ С ПЕРВЫМ ЗАМЕРОМ"/><TextBlock x:Name="CpuCompareText" Classes="muted" FontSize="13" TextWrapping="Wrap" Text="Первый запуск станет базовым."/></StackPanel>
+                  </Grid>
+                </StackPanel>
+              </Border>
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+      </Grid>
+
+      <Grid Grid.Row="2" ColumnDefinitions="*,Auto" MinHeight="52" Margin="0,0,0,2">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+          <Ellipse x:Name="StatusDot" Width="7" Height="7" Fill="#65E1B4"/>
+          <TextBlock x:Name="StatusText" Classes="small" VerticalAlignment="Center" Text="Готов к работе • изменения не применялись"/>
+        </StackPanel>
+        <TextBlock Grid.Column="1" Classes="small" VerticalAlignment="Center" Text="Изменяйте по одному параметру • проверяйте 1% Low"/>
+      </Grid>
+    </Grid>
+  </Grid>
+</Window>
