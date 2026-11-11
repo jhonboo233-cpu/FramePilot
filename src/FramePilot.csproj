@@ -8,7 +8,7 @@
     <ApplicationIcon>Assets/framepilot.ico</ApplicationIcon>
     <AssemblyName>FramePilot</AssemblyName>
     <RootNamespace>FramePilot</RootNamespace>
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
     <Authors>FramePilot</Authors>
     <Description>Безопасная диагностика и обратимая оптимизация Windows 11 для игр</Description>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>

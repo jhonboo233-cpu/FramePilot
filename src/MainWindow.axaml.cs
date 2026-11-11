@@ -1,10 +1,12 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using FramePilot.Models;
 using FramePilot.Services;
 using Microsoft.Win32;
@@ -21,7 +23,15 @@ public partial class MainWindow : Window
     private SystemReport? _lastReport;
     private Task<SystemReport>? _memoryTask;
     private bool _projectUiUpdating;
+    private bool _processUiUpdating;
     private bool _initialized;
+    private bool _hotkeyRegistered;
+    private bool _wndProcHookAdded;
+    private IntPtr _windowHandle;
+    private const int HotkeyId = 0x4650;
+    private const uint WmHotkey = 0x0312;
+    private const uint ModNoRepeat = 0x4000;
+    private const uint VkF9 = 0x78;
 
     public MainWindow()
     {
@@ -46,6 +56,66 @@ public partial class MainWindow : Window
             Navigate_Click(NavBenchmark, new RoutedEventArgs());
         _ = LoadMemoryInfoAsync();
     }
+
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+        if (!OperatingSystem.IsWindows())
+        {
+            HotkeyStatusText.Text = "F9: глобальная клавиша доступна в Windows 11; кнопки захвата остаются основным способом управления.";
+            return;
+        }
+        try
+        {
+            _windowHandle = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+            if (_windowHandle == IntPtr.Zero) throw new InvalidOperationException("Окно ещё не получило системный дескриптор.");
+            Win32Properties.AddWndProcHookCallback(this, WndProcHook);
+            _wndProcHookAdded = true;
+            _hotkeyRegistered = RegisterHotKey(_windowHandle, HotkeyId, ModNoRepeat, VkF9);
+            if (_hotkeyRegistered)
+                HotkeyStatusText.Text = "F9: запуск следующего прогона; во время прогрева или захвата — остановка. Работает даже когда игра активна.";
+            else
+                HotkeyStatusText.Text = $"F9 не зарегистрирована (код {Marshal.GetLastWin32Error()}). Возможно, клавишу заняла другая программа; кнопки захвата продолжают работать.";
+        }
+        catch (Exception ex)
+        {
+            HotkeyStatusText.Text = "F9 недоступна: " + ex.Message + " Кнопки захвата продолжают работать.";
+        }
+    }
+
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        if (_hotkeyRegistered && _windowHandle != IntPtr.Zero)
+        {
+            UnregisterHotKey(_windowHandle, HotkeyId);
+            _hotkeyRegistered = false;
+        }
+        if (_wndProcHookAdded)
+        {
+            Win32Properties.RemoveWndProcHookCallback(this, WndProcHook);
+            _wndProcHookAdded = false;
+        }
+        _captureCts?.Cancel();
+        base.OnClosing(e);
+    }
+
+    private IntPtr WndProcHook(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (message == WmHotkey && wParam.ToInt32() == HotkeyId)
+        {
+            handled = true;
+            Dispatcher.UIThread.Post(async () => await HandleGlobalHotkey());
+        }
+        return IntPtr.Zero;
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
     private void Navigate_Click(object? sender, RoutedEventArgs e)
     {

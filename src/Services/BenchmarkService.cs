@@ -10,7 +10,8 @@ internal sealed class BenchmarkService
 
     public GameBenchmarkProject? ActiveProject => ProjectStore.Projects.FirstOrDefault(x => x.Id == ProjectStore.ActiveProjectId);
 
-    public GameBenchmarkProject CreateProject(string name, string gamePath, string scene, string resolution, string graphicsPreset, int captureSeconds)
+    public GameBenchmarkProject CreateProject(string name, string gamePath, string scene, string resolution, string graphicsPreset,
+        int captureSeconds, int warmupSeconds, int runsPerSeries)
     {
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Укажите название проекта замера.");
         if (string.IsNullOrWhiteSpace(gamePath)) throw new ArgumentException("Выберите исполняемый файл игры.");
@@ -19,7 +20,9 @@ internal sealed class BenchmarkService
         {
             Name = name.Trim(), GamePath = gamePath.Trim(), Scene = scene.Trim(),
             Resolution = resolution.Trim(), GraphicsPreset = graphicsPreset.Trim(),
-            CaptureSeconds = Math.Clamp(captureSeconds, 15, 600)
+            CaptureSeconds = Math.Clamp(captureSeconds, 15, 600),
+            WarmupSeconds = Math.Clamp(warmupSeconds, 0, 60),
+            RunsPerSeries = Math.Clamp(runsPerSeries, 1, 5)
         };
         ProjectStore.Projects.Insert(0, project);
         ProjectStore.ActiveProjectId = project.Id;
@@ -27,7 +30,8 @@ internal sealed class BenchmarkService
         return project;
     }
 
-    public void UpdateProject(GameBenchmarkProject project, string name, string gamePath, string scene, string resolution, string graphicsPreset, int captureSeconds)
+    public void UpdateProject(GameBenchmarkProject project, string name, string gamePath, string scene, string resolution, string graphicsPreset,
+        int captureSeconds, int warmupSeconds, int runsPerSeries)
     {
         if (project.Captures.Count > 0 && !string.Equals(project.GamePath, gamePath.Trim(), StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("Нельзя заменить игру после начала замеров. Создайте новый проект.");
@@ -39,6 +43,8 @@ internal sealed class BenchmarkService
         project.Resolution = resolution.Trim();
         project.GraphicsPreset = graphicsPreset.Trim();
         project.CaptureSeconds = Math.Clamp(captureSeconds, 15, 600);
+        project.WarmupSeconds = Math.Clamp(warmupSeconds, 0, 60);
+        project.RunsPerSeries = Math.Clamp(runsPerSeries, 1, 5);
         SaveProjects();
     }
 
@@ -62,13 +68,20 @@ internal sealed class BenchmarkService
     {
         var runs = project.Captures.Where(x => x.Stage == stage).ToList();
         if (runs.Count == 0) return null;
+        var averageFps = runs.Select(x => x.AverageFps).Where(x => x > 0 && double.IsFinite(x)).ToArray();
+        var medianFps = Median(runs.Select(x => x.AverageFps));
+        var minimum = averageFps.Length > 0 ? averageFps.Min() : 0;
+        var maximum = averageFps.Length > 0 ? averageFps.Max() : 0;
         return new CaptureSummary
         {
-            AverageFps = Median(runs.Select(x => x.AverageFps)),
+            AverageFps = medianFps,
             Low1Fps = Median(runs.Select(x => x.Low1Fps)),
             Low01Fps = Median(runs.Select(x => x.Low01Fps)),
             AverageFrameTimeMs = Median(runs.Select(x => x.AverageFrameTimeMs)),
-            RunCount = runs.Count
+            RunCount = runs.Count,
+            MinAverageFps = minimum,
+            MaxAverageFps = maximum,
+            SpreadPercent = medianFps > 0 ? (maximum - minimum) / medianFps * 100 : 0
         };
     }
 
@@ -84,13 +97,20 @@ internal sealed class BenchmarkService
             Low01 = CompareMetric(before.Low01Fps, after.Low01Fps),
             FrameTime = CompareMetric(before.AverageFrameTimeMs, after.AverageFrameTimeMs, true),
             BeforeRunCount = before.RunCount,
-            AfterRunCount = after.RunCount
+            AfterRunCount = after.RunCount,
+            BeforeSpread = before.SpreadPercent,
+            AfterSpread = after.SpreadPercent,
+            IsStable = before.IsStable && after.IsStable
         };
         var baseline = project.Captures.Where(x => x.Stage == "Before").OrderBy(x => x.CreatedAt).First();
         var latest = project.Captures.Where(x => x.Stage == "After").OrderByDescending(x => x.CreatedAt).First();
         AddEnvironmentWarnings(comparison, baseline.Environment, latest.Environment);
         if (before.RunCount < 3 || after.RunCount < 3)
             comparison.Warnings.Add("Результат предварительный: для надёжного вывода выполните минимум 3 замера ДО и 3 замера ПОСЛЕ.");
+        if (before.HasExcessiveSpread)
+            comparison.Warnings.Add($"Серия ДО нестабильна: разброс среднего FPS {before.SpreadPercent:0.#}% при пороге 5%. Повторите прогоны в той же сцене.");
+        if (after.HasExcessiveSpread)
+            comparison.Warnings.Add($"Серия ПОСЛЕ нестабильна: разброс среднего FPS {after.SpreadPercent:0.#}% при пороге 5%. Повторите прогоны в той же сцене.");
         return comparison;
     }
 
@@ -119,6 +139,7 @@ internal sealed class BenchmarkService
         CompareCondition(before.Resolution, after.Resolution, "Разрешение в замерах отличается");
         CompareCondition(before.GraphicsPreset, after.GraphicsPreset, "Графический пресет в замерах отличается");
         CompareCondition(before.Scene, after.Scene, "Описание тестовой сцены изменилось");
+        CompareCondition(before.ProcessName, after.ProcessName, "Изменился захватываемый игровой процесс");
 
         void CompareCondition(string oldValue, string newValue, string message)
         {
@@ -131,8 +152,9 @@ internal sealed class BenchmarkService
     {
         var fileName = string.IsNullOrWhiteSpace(capture.RawCsvFileName) ? capture.Id : capture.RawCsvFileName;
         var path = Path.Combine(AppStorage.GetProjectDirectory(project.Id), fileName + ".summary.txt");
-        var text = $"FramePilot 1.2 — {capture.StageLabel}\n" +
+        var text = $"FramePilot 1.3 — {capture.StageLabel}\n" +
                    $"Дата: {capture.CreatedAt:O}\nИгра: {project.Name}\nФайл: {project.GamePath}\n" +
+                   $"Игровой процесс: {capture.Environment.ProcessName}\n" +
                    $"Сцена: {capture.Environment.Scene}\nРазрешение: {capture.Environment.Resolution}\n" +
                    $"Пресет: {capture.Environment.GraphicsPreset}\nРежим: {capture.ModeLabel}\n" +
                    $"Средний FPS: {capture.AverageFps:0.###}\n1% Low: {capture.Low1Fps:0.###}\n" +

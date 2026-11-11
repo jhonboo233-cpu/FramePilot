@@ -126,10 +126,41 @@ public sealed class GameBenchmarkProject
     public string Resolution { get; set; } = string.Empty;
     public string GraphicsPreset { get; set; } = string.Empty;
     public int CaptureSeconds { get; set; } = 60;
+    public int WarmupSeconds { get; set; } = 10;
+    public int RunsPerSeries { get; set; } = 3;
+    public string TargetProcessName { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public List<FrameCapture> Captures { get; set; } = new();
     public PendingCapture? Pending { get; set; }
     public string DisplayName => Name;
+    public string EffectiveProcessName => string.IsNullOrWhiteSpace(TargetProcessName)
+        ? Path.GetFileName(GamePath)
+        : Path.GetFileName(TargetProcessName);
+}
+
+public sealed class GameProcessInfo
+{
+    public int ProcessId { get; set; }
+    public string ProcessName { get; set; } = string.Empty;
+    public string ExecutablePath { get; set; } = string.Empty;
+    public string MainWindowTitle { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+}
+
+public sealed class CaptureReadiness
+{
+    public bool IsReady { get; set; }
+    public List<string> Checks { get; set; } = new();
+    public string Summary => string.Join(Environment.NewLine, Checks);
+}
+
+public sealed class CaptureProgressInfo
+{
+    public string Phase { get; set; } = "Capture";
+    public int RemainingSeconds { get; set; }
+    public int TotalSeconds { get; set; }
+    public int RunNumber { get; set; }
+    public int TargetRuns { get; set; }
 }
 
 public sealed class PendingCapture
@@ -176,6 +207,7 @@ public sealed class CaptureEnvironment
     public string Scene { get; set; } = string.Empty;
     public string Resolution { get; set; } = string.Empty;
     public string GraphicsPreset { get; set; } = string.Empty;
+    public string ProcessName { get; set; } = string.Empty;
 }
 
 public sealed class CaptureSummary
@@ -185,6 +217,11 @@ public sealed class CaptureSummary
     public double Low01Fps { get; set; }
     public double AverageFrameTimeMs { get; set; }
     public int RunCount { get; set; }
+    public double MinAverageFps { get; set; }
+    public double MaxAverageFps { get; set; }
+    public double SpreadPercent { get; set; }
+    public bool HasExcessiveSpread => RunCount > 1 && SpreadPercent > 5;
+    public bool IsStable => RunCount >= 3 && !HasExcessiveSpread;
 }
 
 public sealed class MetricComparison
@@ -205,7 +242,23 @@ public sealed class BenchmarkComparison
     public MetricComparison FrameTime { get; set; } = new();
     public int BeforeRunCount { get; set; }
     public int AfterRunCount { get; set; }
+    public double BeforeSpread { get; set; }
+    public double AfterSpread { get; set; }
+    public bool IsStable { get; set; }
     public List<string> Warnings { get; set; } = new();
+}
+
+internal static class BenchmarkWorkflow
+{
+    public static string SelectHotkeyStage(GameBenchmarkProject project, CaptureSummary? beforeSummary)
+    {
+        var beforeCount = project.Captures.Count(x => x.Stage == "Before");
+        var afterCount = project.Captures.Count(x => x.Stage == "After");
+        if (afterCount > 0) return "After";
+        if (beforeCount == 0 || beforeCount < Math.Clamp(project.RunsPerSeries, 1, 5)) return "Before";
+        if (beforeSummary?.HasExcessiveSpread == true) return "Before";
+        return "After";
+    }
 }
 
 [JsonSerializable(typeof(BackupSnapshot))]

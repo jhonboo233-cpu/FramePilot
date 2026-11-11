@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <strong>Version 1.2.0 · Windows 11 x64 · .NET 8 · Avalonia · PresentMon 2.6</strong>
+  <strong>Version 1.3.0 · Windows 11 x64 · .NET 8 · Avalonia · PresentMon 2.6</strong>
 </p>
 
 ![FramePilot benchmark wizard](docs/images/framepilot-benchmark.png)
@@ -34,12 +34,18 @@ The interface is currently in Russian.
 - Shader-cache preparation without deleting the cache.
 - HAGS A/B guidance.
 - Project-based game benchmarks with the same executable, scene, resolution, and graphics preset.
+- Actual game-process selection when a launcher and the game use different executables.
+- Global F9 hotkey on Windows: start the next required run or stop the current warmup/capture.
+- Capture-readiness checks for Windows 11, the selected process, PresentMon integrity, and CSV write access.
+- Configurable 0–60 second warmup before PresentMon starts, excluded from the result CSV.
+- Configurable target series length of 1–5 separate runs, with additional runs allowed.
+- Per-series FPS range and spread warning above 5%; unstable or short series cannot be presented as a confirmed result.
 - Automatic frame capture through Intel PresentMon ETW, without DLL injection into the game.
 - Manual benchmark entry as a fallback.
 - Average FPS, 1% Low, 0.1% Low, average frame time, and raw frame-time CSV.
 - Median summary across repeated BEFORE and AFTER runs.
 - Green, neutral, and red comparison states using a ±3% confirmation threshold.
-- Environment mismatch warnings for hardware, GPU driver, game version, memory configuration, scene, resolution, and graphics preset changes.
+- Environment mismatch warnings for hardware, GPU driver, game version, memory configuration, captured process, scene, resolution, and graphics preset changes.
 - Recovery of an interrupted capture from its pending CSV.
 - Portable self-contained build: no separate .NET or PresentMon installation is required.
 
@@ -49,6 +55,10 @@ FramePilot calculates average FPS from the arithmetic mean of valid frame times.
 
 Multiple captures are summarized by the median of each metric. A change is marked as an improvement at +3% or higher, as a degradation at −3% or lower, and as neutral inside that range. For frame time, the percentage is inverted because lower is better.
 
+For each BEFORE and AFTER series, FramePilot also calculates the average-FPS spread as `(maximum − minimum) / median × 100%`. A spread above 5% triggers a repeat-run recommendation. A confirmed-result heading requires at least three runs in each series and a spread no greater than 5% in both.
+
+Warmup is a separate countdown before PresentMon starts. It does not create a pending capture or write warmup frames into the result CSV. Each run is started separately so the same scene can be repeated between captures.
+
 For a more reliable comparison, run at least three BEFORE and three AFTER captures without changing the scene or settings. FramePilot warns when this condition is not met.
 
 ## Download and quick start
@@ -57,12 +67,14 @@ For a more reliable comparison, run at least three BEFORE and three AFTER captur
 2. Download `FramePilot-Windows11-x64.zip`.
 3. Extract it and run `FramePilot.exe`.
 4. Open **Diagnostics** and inspect the system report.
-5. Open **Benchmark**, create a game project, and select the actual game executable.
-6. Describe a repeatable scene or built-in benchmark, then save at least one BEFORE capture. Three captures are recommended.
-7. Apply the desired optimizations.
-8. Return to the same project and repeat the same scene for AFTER captures.
-9. Review the median comparison, environment warnings, raw CSV files, and text summaries.
-10. Use **Restore** if you want to roll back the applied Windows changes.
+5. Open **Benchmark**, create a game project, and choose the game or launcher executable.
+6. Launch the game, refresh the process list, and select the actual rendering process if it differs from the launcher.
+7. Describe a repeatable scene, configure capture, warmup, and series length, then run the readiness check.
+8. Use F9 or the capture buttons for separate BEFORE runs, repeating the same scene between runs. Three captures are recommended.
+9. Apply the desired optimizations.
+10. Return to the same project and repeat the same scene for AFTER captures.
+11. Review the median comparison, per-series spread, environment warnings, raw CSV files, and text summaries.
+12. Use **Restore** if you want to roll back the applied Windows changes.
 
 Windows may request administrator approval when elevated access is required, including for PresentMon ETW capture.
 
@@ -126,9 +138,9 @@ FramePilot does not:
 
 ## Verification status
 
-Version 1.2 has been checked for compilation, CSV parsing and metric calculations, complete manual BEFORE/AFTER workflows, median comparisons, color thresholds, persistence, interrupted-capture recovery, embedded PresentMon extraction and SHA-256 verification, and UI layouts at 1366×768, 1920×1080, and 2560×1440.
+Version 1.3 has been checked for compilation, 1.2 JSON compatibility, CSV parsing and metric calculations, F9 stage-selection logic, the 5% spread threshold, process-mismatch warnings, project persistence, complete manual 3+3 BEFORE/AFTER workflows, stable and unstable comparison states, readiness failure handling, and UI layouts at 1366×768, 1920×1080, and 2560×1440.
 
-Real ETW capture must still be validated on the target Windows 11 PC with each specific game. PresentMon support and anti-cheat policies can vary by game.
+Real ETW capture, Windows process enumeration, global F9 registration, and warmup cancellation must still be validated on the target Windows 11 PC with each specific game. PresentMon support and anti-cheat policies can vary by game.
 
 ## Third-party components
 

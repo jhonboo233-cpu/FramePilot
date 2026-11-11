@@ -111,7 +111,7 @@
               <TextBlock Classes="small" TextWrapping="Wrap" Text="Без разгона, отключения защиты и скрытых твиков."/>
             </StackPanel>
           </Border>
-          <TextBlock Text="Версия 1.2 • Windows 11 x64" FontSize="11" Foreground="#5F6D81" Margin="8,0,0,4"/>
+          <TextBlock Text="Версия 1.3 • Windows 11 x64" FontSize="11" Foreground="#5F6D81" Margin="8,0,0,4"/>
         </StackPanel>
       </Grid>
     </Border>
@@ -315,12 +315,14 @@
                     <TextBox x:Name="ProjectNameInput" Watermark="Название: Cyberpunk 2077 — Ultra — тест 1"/>
                     <Grid ColumnDefinitions="*,Auto"><TextBox x:Name="GamePathInput" Watermark="Путь к исполняемому файлу игры (.exe)"/><Button Grid.Column="1" Classes="secondary" Margin="10,0,0,0" Content="Выбрать EXE" Click="BrowseGame_Click"/></Grid>
                     <TextBox x:Name="SceneInput" Watermark="Сцена: встроенный бенчмарк или одинаковый маршрут"/>
-                    <Grid ColumnDefinitions="*,*,100">
+                    <Grid ColumnDefinitions="*,*,88,88,88">
                       <TextBox Grid.Column="0" x:Name="ResolutionInput" Watermark="2560×1440" Margin="0,0,10,0"/>
                       <TextBox Grid.Column="1" x:Name="GraphicsPresetInput" Watermark="Ultra, без FG" Margin="0,0,10,0"/>
-                      <TextBox Grid.Column="2" x:Name="DurationInput" Text="60" Watermark="Секунды"/>
+                      <StackPanel Grid.Column="2" Spacing="4" Margin="0,0,8,0"><TextBlock Classes="small" Text="ЗАХВАТ, С"/><TextBox x:Name="DurationInput" Text="60" Watermark="15–600"/></StackPanel>
+                      <StackPanel Grid.Column="3" Spacing="4" Margin="0,0,8,0"><TextBlock Classes="small" Text="ПРОГРЕВ, С"/><TextBox x:Name="WarmupInput" Text="10" Watermark="0–60"/></StackPanel>
+                      <StackPanel Grid.Column="4" Spacing="4"><TextBlock Classes="small" Text="СЕРИЯ"/><TextBox x:Name="SeriesInput" Text="3" Watermark="1–5"/></StackPanel>
                     </Grid>
-                    <TextBlock Classes="small" Text="Длительность автоматического захвата: 15–600 секунд. Не меняйте сцену и настройки между сериями." TextWrapping="Wrap"/>
+                    <TextBlock Classes="small" Text="Прогрев выполняется до запуска PresentMon и не попадает в CSV. Серия — отдельные прогоны с повторением сцены; после цели можно добавлять дополнительные замеры. Не меняйте условия между ДО и ПОСЛЕ." TextWrapping="Wrap"/>
                   </StackPanel>
                   <Border Grid.Column="1" Classes="notice">
                     <StackPanel Spacing="10">
@@ -339,7 +341,15 @@
             <Grid ColumnDefinitions="1.45*,1*">
               <Border Grid.Column="0" Classes="panel" Margin="0,0,16,0">
                 <StackPanel Spacing="14">
-                  <StackPanel Spacing="5"><TextBlock Classes="h2" Text="Автоматический захват кадров"/><TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="PresentMon работает отдельным ETW-процессом и не внедряется в игру. Сначала запустите игру и дойдите до тестовой сцены, затем начните захват. При необходимости Windows запросит права администратора для PresentMon."/></StackPanel>
+                  <StackPanel Spacing="5"><TextBlock Classes="h2" Text="Автоматический захват кадров"/><TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="PresentMon работает отдельным ETW-процессом и не внедряется в игру. Выберите фактический игровой процесс, проверьте готовность и повторяйте одну сцену между прогонами. Прогрев идёт до записи CSV."/></StackPanel>
+                  <Grid ColumnDefinitions="*,Auto,Auto">
+                    <ComboBox Grid.Column="0" x:Name="GameProcessSelector" MinHeight="42" Margin="0,0,8,0" SelectionChanged="GameProcessSelector_Changed" PlaceholderText="Выберите игровой процесс">
+                      <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis"/></DataTemplate></ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Button Grid.Column="1" x:Name="RefreshProcessesButton" Classes="secondary" Content="Обновить" Margin="0,0,8,0" Click="RefreshProcesses_Click"/>
+                    <Button Grid.Column="2" x:Name="CheckCaptureReadinessButton" Classes="secondary" Content="Проверить готовность" Click="CheckCaptureReadiness_Click"/>
+                  </Grid>
+                  <TextBlock x:Name="HotkeyStatusText" Classes="small" Foreground="#72E2B9" TextWrapping="Wrap" Text="F9: регистрация глобальной клавиши при открытии окна…"/>
                   <StackPanel Spacing="10">
                     <WrapPanel Orientation="Horizontal" ItemSpacing="10" LineSpacing="10">
                       <Button x:Name="LaunchGameButton" Classes="secondary" Content="Запустить игру" Click="LaunchGame_Click" IsEnabled="False"/>
@@ -351,6 +361,7 @@
                   </StackPanel>
                   <ProgressBar x:Name="CaptureProgress" Minimum="0" Maximum="100" Value="0" IsVisible="False"/>
                   <TextBlock x:Name="CaptureStatusText" Classes="small" TextWrapping="Wrap" Text="CSV и итоговый отчёт сохраняются автоматически после каждого захвата."/>
+                  <Border Classes="notice" Padding="12"><TextBlock x:Name="SeriesStabilityText" Classes="small" TextWrapping="Wrap" Text="Серии появятся после создания проекта и первого замера."/></Border>
                 </StackPanel>
               </Border>
               <Border Grid.Column="1" Classes="stat">
@@ -386,6 +397,7 @@
                   <Border Grid.Column="2" Classes="stat" Margin="0,0,12,0"><StackPanel Spacing="7"><TextBlock Classes="small" Text="0.1% LOW"/><TextBlock x:Name="Low01ResultText" Classes="h3"/><TextBlock x:Name="Low01DeltaText" FontSize="22" FontWeight="Bold"/><TextBlock x:Name="Low01StatusText" Classes="small" TextWrapping="Wrap"/></StackPanel></Border>
                   <Border Grid.Column="3" Classes="stat"><StackPanel Spacing="7"><TextBlock Classes="small" Text="ВРЕМЯ КАДРА"/><TextBlock x:Name="FrameTimeResultText" Classes="h3"/><TextBlock x:Name="FrameTimeDeltaText" FontSize="22" FontWeight="Bold"/><TextBlock x:Name="FrameTimeStatusText" Classes="small" TextWrapping="Wrap"/></StackPanel></Border>
                 </Grid>
+                <TextBlock x:Name="ComparisonStabilityText" Classes="muted" FontSize="13" TextWrapping="Wrap"/>
                 <TextBlock x:Name="ComparisonWarningsText" Classes="muted" Foreground="#E7C987" FontSize="13" TextWrapping="Wrap"/>
               </StackPanel>
             </Border>
