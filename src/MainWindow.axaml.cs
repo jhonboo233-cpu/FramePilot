@@ -21,9 +21,6 @@ public partial class MainWindow : Window
     private readonly FrameCaptureService _capture;
     private CancellationTokenSource? _captureCts;
     private SystemReport? _lastReport;
-    private Task<SystemReport>? _memoryTask;
-    private bool _projectUiUpdating;
-    private bool _processUiUpdating;
     private bool _initialized;
     private bool _hotkeyRegistered;
     private bool _wndProcHookAdded;
@@ -44,6 +41,8 @@ public partial class MainWindow : Window
         foreach (var project in _benchmark.ProjectStore.Projects.ToList())
             _capture.TryRecoverPending(project);
         RefreshProjectList();
+        InitializePresetUI();
+        InitializeBenchmarkAutoDetection();
         RefreshCpuResults();
         FindingsList.ItemsSource = new[]
         {
@@ -54,7 +53,6 @@ public partial class MainWindow : Window
             (_benchmark.ActiveProject?.Captures.Any(x => x.Stage == "Before") == true &&
              _benchmark.ActiveProject.Captures.All(x => x.Stage != "After")))
             Navigate_Click(NavBenchmark, new RoutedEventArgs());
-        _ = LoadMemoryInfoAsync();
     }
 
     protected override void OnOpened(EventArgs e)
@@ -73,7 +71,7 @@ public partial class MainWindow : Window
             _wndProcHookAdded = true;
             _hotkeyRegistered = RegisterHotKey(_windowHandle, HotkeyId, ModNoRepeat, VkF9);
             if (_hotkeyRegistered)
-                HotkeyStatusText.Text = "F9: запуск следующего прогона; во время прогрева или захвата — остановка. Работает даже когда игра активна.";
+                HotkeyStatusText.Text = "F9: запуск ДО / ПОСЛЕ; во время замера — остановка и сохранение. Работает даже когда игра активна.";
             else
                 HotkeyStatusText.Text = $"F9 не зарегистрирована (код {Marshal.GetLastWin32Error()}). Возможно, клавишу заняла другая программа; кнопки захвата продолжают работать.";
         }
@@ -119,13 +117,14 @@ public partial class MainWindow : Window
 
     private void Navigate_Click(object? sender, RoutedEventArgs e)
     {
-        foreach (var button in new[] { NavAudit, NavOptimize, NavRestore, NavBenchmark })
+        foreach (var button in new[] { NavAudit, NavOptimize, NavPresets, NavRestore, NavBenchmark })
             button.Classes.Remove("selected");
         if (sender is not Button selected) return;
         selected.Classes.Add("selected");
 
         AuditView.IsVisible = selected == NavAudit;
         OptimizeView.IsVisible = selected == NavOptimize;
+        PresetsView.IsVisible = selected == NavPresets;
         RestoreView.IsVisible = selected == NavRestore;
         BenchmarkView.IsVisible = selected == NavBenchmark;
 
@@ -140,6 +139,11 @@ public partial class MainWindow : Window
             PageSubtitle.Text = "Только выбранные параметры, предварительный план и автоматическая копия.";
             UpdatePlan();
         }
+        else if (selected == NavPresets)
+        {
+            PageTitle.Text = "Игровые пресеты";
+            PageSubtitle.Text = "Выберите игру и нажмите «Применить и протестировать».";
+        }
         else if (selected == NavRestore)
         {
             PageTitle.Text = "Возврат исходных настроек";
@@ -149,8 +153,7 @@ public partial class MainWindow : Window
         else
         {
             PageTitle.Text = "Измерение результата";
-            PageSubtitle.Text = "Сравнивайте одинаковые сцены и сохраняйте честные результаты.";
-            _ = LoadMemoryInfoAsync();
+            PageSubtitle.Text = "Игра определяется автоматически • один замер ДО и один ПОСЛЕ • максимум 5 минут.";
         }
     }
 
@@ -172,7 +175,7 @@ public partial class MainWindow : Window
             await MessageWindow.Show(this, "Режим не поддерживается", "Повышение прав доступно в Windows. Запустите FramePilot на целевом компьютере.");
             return;
         }
-        var restart = await MessageWindow.Confirm(this, "Повысить права?", "FramePilot будет перезапущен через системный запрос UAC. Несохранённые поля бенчмарка нужно будет ввести заново.", "Перезапустить");
+        var restart = await MessageWindow.Confirm(this, "Повысить права?", "FramePilot будет перезапущен через системный запрос UAC. Сохранённые замеры и проекты останутся на месте.", "Перезапустить");
         if (!restart) return;
         try
         {
@@ -215,40 +218,11 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task LoadMemoryInfoAsync()
-    {
-        if (_lastReport != null)
-        {
-            ApplyMemoryInfo(_lastReport);
-            return;
-        }
-        try
-        {
-            _memoryTask ??= _audit.RunAsync();
-            var report = await _memoryTask;
-            _lastReport ??= report;
-            ApplyMemoryInfo(_lastReport);
-        }
-        catch
-        {
-            BenchmarkMemoryText.Text = "Не определена";
-            BenchmarkMemorySpeedText.Text = "Не определена";
-            BenchmarkMemoryChannelText.Text = "Не определён";
-            _memoryTask = null;
-        }
-    }
-
     private void ApplyMemoryInfo(SystemReport report)
     {
         MemoryDetailsText.Text = report.MemoryDetails;
         MemoryChannelText.Text = report.MemoryChannel;
         MemoryChannelDetailsText.Text = report.MemoryChannelDetails;
-        BenchmarkMemoryText.Text = report.Memory;
-        BenchmarkMemorySpeedText.Text = report.MemorySpeed;
-        BenchmarkMemoryChannelText.Text = report.MemoryChannel;
-        BenchmarkMemoryDetailsText.Text = string.IsNullOrWhiteSpace(report.MemoryChannelDetails)
-            ? "Данные будут сохранены вместе с игровым замером."
-            : report.MemoryChannelDetails + " Частота и канальный режим сохранятся вместе с игровым замером.";
     }
 
     private OptimizationOptions CurrentOptions() => new()
@@ -359,6 +333,8 @@ public partial class MainWindow : Window
         catch (Exception ex) { StatusText.Text = $"CPU-тест не выполнен: {ex.Message}"; }
         finally { RunCpuButton.IsEnabled = true; CpuProgress.IsVisible = false; }
     }
+
+    private static string Signed(double value) => (value >= 0 ? "+" : string.Empty) + value.ToString("0.#", CultureInfo.InvariantCulture);
 
     private void RefreshCpuResults()
     {

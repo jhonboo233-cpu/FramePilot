@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using FramePilot.Models;
@@ -9,6 +10,7 @@ namespace FramePilot.Services;
 
 internal sealed class FrameCaptureService
 {
+    internal const int MaxContinuousCaptureSeconds = 300;
     private const string PresentMonResource = "FramePilot.PresentMon.exe";
     private const string PresentMonSha256 = "b2a706bc6ad475749e3b7e3409263aa1e6906d45bdcf993f6dbc0f660188f1af";
     private readonly BenchmarkService _benchmark;
@@ -16,6 +18,67 @@ internal sealed class FrameCaptureService
     private Process? _activeProcess;
 
     public FrameCaptureService(BenchmarkService benchmark) => _benchmark = benchmark;
+
+    public Task<GameProcessInfo?> DetectKnownGameAsync(string? preferredPresetId = null, bool preferredOnly = false) =>
+        Task.Run(() => DetectKnownGame(preferredPresetId, preferredOnly));
+
+    private static GameProcessInfo? DetectKnownGame(string? preferredPresetId, bool preferredOnly)
+    {
+        if (!OperatingSystem.IsWindows()) return null;
+        var presets = GamePresetCatalog.All
+            .OrderByDescending(x => x.Id == preferredPresetId)
+            .ToList();
+        foreach (var preset in presets)
+        {
+            if (preferredOnly && preset.Id != preferredPresetId) continue;
+            var processName = Path.GetFileNameWithoutExtension(preset.ProcessName);
+            var processes = Process.GetProcessesByName(processName);
+            try
+            {
+                var process = processes
+                    .OrderByDescending(x => { try { return x.MainWindowHandle != IntPtr.Zero; } catch { return false; } })
+                    .FirstOrDefault();
+                if (process == null) continue;
+                var info = new GameProcessInfo
+                {
+                    ProcessId = process.Id,
+                    ProcessName = preset.ProcessName,
+                    DisplayName = preset.GameName
+                };
+                try { info.ExecutablePath = process.MainModule?.FileName ?? string.Empty; } catch { }
+                try { info.MainWindowTitle = process.MainWindowTitle ?? string.Empty; } catch { }
+                info.DetectedResolution = GetWindowResolution(process);
+                return info;
+            }
+            finally { foreach (var process in processes) process.Dispose(); }
+        }
+        return null;
+    }
+
+    private static string GetWindowResolution(Process process)
+    {
+        try
+        {
+            if (process.MainWindowHandle != IntPtr.Zero && GetClientRect(process.MainWindowHandle, out var rect) &&
+                rect.Right > rect.Left && rect.Bottom > rect.Top)
+                return $"{rect.Right - rect.Left}×{rect.Bottom - rect.Top}";
+        }
+        catch { }
+        return string.Empty;
+    }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetClientRect(IntPtr hWnd, out NativeRect rect);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
 
     public List<GameProcessInfo> GetGameProcesses(GameBenchmarkProject project)
     {
@@ -97,7 +160,8 @@ internal sealed class FrameCaptureService
         var windows11 = OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000);
         Check(windows11, "Windows 11 поддерживает захват.", "Автоматический захват доступен только в Windows 11.");
         if (!windows11) return result;
-        Check(File.Exists(project.GamePath), "EXE проекта найден.", "Исполняемый файл игры не найден. Укажите правильный путь.");
+        Check(string.IsNullOrWhiteSpace(project.GamePath) || File.Exists(project.GamePath),
+            "Игровой процесс найден автоматически.", "Путь к EXE игры недоступен. Перезапустите игру и дождитесь автоопределения.");
         var targetName = project.EffectiveProcessName;
         Check(!string.IsNullOrWhiteSpace(targetName), $"Игровой процесс: {targetName}.", "Не выбран игровой процесс.");
         Check(!string.IsNullOrWhiteSpace(targetName) && IsTargetRunning(targetName),
@@ -157,33 +221,31 @@ internal sealed class FrameCaptureService
         int runNumber,
         CancellationToken cancellationToken)
     {
-        var readiness = CheckReadiness(project);
+        var readiness = await Task.Run(() => CheckReadiness(project), cancellationToken);
         if (!readiness.IsReady)
             throw new InvalidOperationException(string.Join(Environment.NewLine,
                 readiness.Checks.Where(x => x.StartsWith("✗ ", StringComparison.Ordinal))));
 
         environment.ProcessName = project.EffectiveProcessName;
-        void Report(string phase, int remaining, int total) => progress.Report(new CaptureProgressInfo
+        var live = new LiveCaptureMetrics();
+        void Report(int remaining, string phase = "Capture") => progress.Report(new CaptureProgressInfo
         {
             Phase = phase,
             RemainingSeconds = remaining,
-            TotalSeconds = total,
-            RunNumber = runNumber,
-            TargetRuns = project.RunsPerSeries
+            TotalSeconds = MaxContinuousCaptureSeconds,
+            RunNumber = 1,
+            TargetRuns = 1,
+            CurrentFps = live.CurrentFps,
+            FrameCount = live.FrameCount,
+            Resolution = live.Resolution
         });
 
         try
         {
-            var warmup = Math.Clamp(project.WarmupSeconds, 0, 60);
-            Report("Warmup", warmup, warmup);
-            for (var remaining = warmup; remaining > 0; remaining--)
-            {
-                await Task.Delay(1000, cancellationToken);
-                Report("Warmup", remaining - 1, warmup);
-            }
+            Report(MaxContinuousCaptureSeconds, "Preparing");
             cancellationToken.ThrowIfCancellationRequested();
             if (!IsTargetRunning(project.EffectiveProcessName))
-                throw new InvalidOperationException($"Процесс {project.EffectiveProcessName} завершился во время прогрева. Перезапустите игру и повторите прогон.");
+                throw new InvalidOperationException($"Процесс {project.EffectiveProcessName} не запущен. Запустите игру и дождитесь автоопределения.");
 
             var tool = ExtractPresentMon();
             var directory = AppStorage.GetProjectDirectory(project.Id);
@@ -202,8 +264,7 @@ internal sealed class FrameCaptureService
             _activeSession = session;
 
             var arguments = $"--process_name \"{project.EffectiveProcessName}\" --output_file \"{rawPath}\" " +
-                            $"--timed {project.CaptureSeconds} --terminate_after_timed --session_name {session} " +
-                            "--stop_existing_session --v2_metrics --no_console_stats";
+                            $"--session_name {session} --stop_existing_session --v2_metrics --no_console_stats";
             var info = new ProcessStartInfo
             {
                 FileName = tool,
@@ -225,30 +286,49 @@ internal sealed class FrameCaptureService
             }
 
             _activeProcess = Process.Start(info) ?? throw new InvalidOperationException("Не удалось запустить PresentMon.");
-            using var registration = cancellationToken.Register(() => TerminateSession(session));
-            var remainingCapture = project.CaptureSeconds;
-            Report("Capture", remainingCapture, project.CaptureSeconds);
-            while (!_activeProcess.HasExited)
+            var startedUtc = DateTime.UtcNow;
+            var elapsedSeconds = 0;
+            Report(MaxContinuousCaptureSeconds);
+            while (!_activeProcess.HasExited && !cancellationToken.IsCancellationRequested && elapsedSeconds < MaxContinuousCaptureSeconds)
             {
-                await Task.Delay(1000, cancellationToken);
-                remainingCapture = Math.Max(0, remainingCapture - 1);
-                Report("Capture", remainingCapture, project.CaptureSeconds);
+                await Task.Delay(1000);
+                elapsedSeconds = Math.Min(MaxContinuousCaptureSeconds, (int)(DateTime.UtcNow - startedUtc).TotalSeconds);
+                if (elapsedSeconds % 2 == 0 && File.Exists(rawPath))
+                {
+                    try { live = await Task.Run(() => ReadLiveMetrics(rawPath)); }
+                    catch { }
+                }
+                Report(MaxContinuousCaptureSeconds - elapsedSeconds);
             }
-            await _activeProcess.WaitForExitAsync(CancellationToken.None);
+
+            if (!_activeProcess.HasExited)
+                await TerminateSessionAsync(session);
+            try
+            {
+                await _activeProcess.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+            }
+            catch (TimeoutException)
+            {
+                throw new InvalidOperationException("PresentMon не ответил на остановку. Закройте его в Диспетчере задач; частичный CSV сохранён в папке замера.");
+            }
+
             var exitCode = _activeProcess.ExitCode;
             for (var attempt = 0; attempt < 20 && !File.Exists(rawPath); attempt++)
-                await Task.Delay(250, CancellationToken.None);
+                await Task.Delay(250);
             if (!File.Exists(rawPath))
-                throw new InvalidOperationException($"PresentMon завершился с кодом {exitCode}, CSV не создан. Проверьте, что {project.EffectiveProcessName} действительно является игровым процессом и в сцене отображаются кадры.");
+                throw new InvalidOperationException($"PresentMon завершился с кодом {exitCode}, CSV не создан. Проверьте, что {project.EffectiveProcessName} является игровым процессом и игра активно выводит кадры.");
 
-            var capture = ParseCsv(rawPath, stage, environment);
+            var capture = await Task.Run(() => ParseCsv(rawPath, stage, environment));
             _benchmark.AddCapture(project, capture);
-            Report("Capture", 0, project.CaptureSeconds);
+            live.CurrentFps = capture.AverageFps;
+            live.FrameCount = capture.FrameCount;
+            live.Resolution = environment.Resolution;
+            Report(0);
             return capture;
         }
         catch (OperationCanceledException)
         {
-            throw new InvalidOperationException("Прогон остановлен. Прогрев не записывается; частичный CSV, если он был создан, сохранён в папке проекта.");
+            throw new InvalidOperationException("Замер остановлен до начала записи. Запустите игру и повторите.");
         }
         finally
         {
@@ -262,7 +342,7 @@ internal sealed class FrameCaptureService
 
     public void CancelCapture()
     {
-        if (_activeSession is string session) TerminateSession(session);
+        if (_activeSession is string session) _ = TerminateSessionAsync(session);
     }
 
     public FrameCapture? TryRecoverPending(GameBenchmarkProject project)
@@ -280,14 +360,26 @@ internal sealed class FrameCaptureService
         catch { return null; }
     }
 
-    internal static FrameCapture ParseCsv(string path, string stage, CaptureEnvironment environment)
+    internal static LiveCaptureMetrics ReadLiveMetrics(string path)
     {
-        using var reader = new StreamReader(path, Encoding.UTF8, true);
-        var headerLine = reader.ReadLine() ?? throw new InvalidDataException("CSV пуст.");
-        var headers = ParseCsvLine(headerLine);
-        var indexes = headers.Select((name, index) => (name: name.Trim().Trim('\uFEFF'), index))
+        var result = new LiveCaptureMetrics();
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream, Encoding.UTF8, true);
+        var headerLine = reader.ReadLine();
+        if (headerLine == null) return result;
+        var indexes = ParseCsvLine(headerLine)
+            .Select((name, index) => (name: name.Trim().Trim('\uFEFF'), index))
             .GroupBy(x => x.name, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(x => x.Key, x => x.First().index, StringComparer.OrdinalIgnoreCase);
+
+        const int tailBytes = 1024 * 1024;
+        if (stream.Length > tailBytes)
+        {
+            stream.Position = stream.Length - tailBytes;
+            reader.DiscardBufferedData();
+            reader.ReadLine();
+        }
+
         var frameTimes = new List<double>();
         string? line;
         while ((line = reader.ReadLine()) != null)
@@ -300,9 +392,47 @@ internal sealed class FrameCaptureService
                         ?? GetNumber(columns, indexes, "MsBetweenDisplayChange")
                         ?? GetNumber(columns, indexes, "MsBetweenAppStart");
             if (value is > 0 and < 60000 && double.IsFinite(value.Value)) frameTimes.Add(value.Value);
+            var width = GetNumber(columns, indexes, "Width");
+            var height = GetNumber(columns, indexes, "Height");
+            if (width > 0 && height > 0) result.Resolution = $"{width:0}×{height:0}";
+        }
+        if (frameTimes.Count == 0) return result;
+        var recent = frameTimes.Skip(Math.Max(0, frameTimes.Count - 240)).ToArray();
+        result.CurrentFps = 1000 / recent.Average();
+        result.FrameCount = frameTimes.Count;
+        return result;
+    }
+
+    internal static FrameCapture ParseCsv(string path, string stage, CaptureEnvironment environment)
+    {
+        using var reader = new StreamReader(path, Encoding.UTF8, true);
+        var headerLine = reader.ReadLine() ?? throw new InvalidDataException("CSV пуст.");
+        var headers = ParseCsvLine(headerLine);
+        var indexes = headers.Select((name, index) => (name: name.Trim().Trim('\uFEFF'), index))
+            .GroupBy(x => x.name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.First().index, StringComparer.OrdinalIgnoreCase);
+        var frameTimes = new List<double>();
+        double lastWidth = 0;
+        double lastHeight = 0;
+        string? line;
+        while ((line = reader.ReadLine()) != null)
+        {
+            var columns = ParseCsvLine(line);
+            var width = GetNumber(columns, indexes, "Width");
+            var height = GetNumber(columns, indexes, "Height");
+            if (width > 0 && height > 0) { lastWidth = width.Value; lastHeight = height.Value; }
+            if (GetText(columns, indexes, "FrameType") is string frameType &&
+                (frameType.Contains("generated", StringComparison.OrdinalIgnoreCase) ||
+                 frameType.Contains("interpolated", StringComparison.OrdinalIgnoreCase))) continue;
+            var value = GetNumber(columns, indexes, "MsBetweenPresents")
+                        ?? GetNumber(columns, indexes, "MsBetweenDisplayChange")
+                        ?? GetNumber(columns, indexes, "MsBetweenAppStart");
+            if (value is > 0 and < 60000 && double.IsFinite(value.Value)) frameTimes.Add(value.Value);
         }
         if (frameTimes.Count < 30)
             throw new InvalidDataException($"В CSV только {frameTimes.Count} пригодных кадров. Нужно минимум 30. Повторите захват в активной игровой сцене.");
+        if (lastWidth > 0 && lastHeight > 0)
+            environment.Resolution = $"{lastWidth:0}×{lastHeight:0}";
 
         var averageMs = frameTimes.Average();
         return new FrameCapture
@@ -404,7 +534,7 @@ internal sealed class FrameCaptureService
         return Convert.ToHexString(SHA256.HashData(stream)).Equals(PresentMonSha256, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static void TerminateSession(string session)
+    private static async Task TerminateSessionAsync(string session)
     {
         if (!OperatingSystem.IsWindows()) return;
         try
@@ -421,7 +551,8 @@ internal sealed class FrameCaptureService
             };
             if (info.UseShellExecute) info.Verb = "runas";
             using var process = Process.Start(info);
-            process?.WaitForExit(10000);
+            if (process != null)
+                await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
         }
         catch { }
     }

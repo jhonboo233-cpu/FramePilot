@@ -7,6 +7,17 @@
         Background="#0B1017" Foreground="#EDF2F7"
         FontFamily="Segoe UI Variable, Segoe UI, Arial"
         Title="FramePilot — игровая оптимизация Windows 11">
+  <Window.Resources>
+    <DataTemplate x:Key="PresetSettingTemplate">
+      <Border Background="#0D151F" BorderBrush="#243041" BorderThickness="1" CornerRadius="9" Padding="12" Margin="0,0,0,9">
+        <StackPanel Spacing="4">
+          <TextBlock Classes="h3" Text="{Binding Name}" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding Value}" Foreground="#72E2B9" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"/>
+          <TextBlock Classes="small" Text="{Binding Detail}" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+  </Window.Resources>
   <Window.Styles>
     <Style Selector="TextBlock.h1"><Setter Property="FontSize" Value="30"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Foreground" Value="#F3F6FA"/></Style>
     <Style Selector="TextBlock.h2"><Setter Property="FontSize" Value="19"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Foreground" Value="#F3F6FA"/></Style>
@@ -86,6 +97,14 @@
               </StackPanel>
             </Grid>
           </Button>
+          <Button x:Name="NavPresets" Classes="nav" Click="Navigate_Click">
+            <Grid ColumnDefinitions="30,*">
+              <Path Width="18" Height="18" Data="M3,5 L15,5 L15,12 L3,12 Z M9,15 L21,15 L21,22 L9,22 Z M6,2 L6,8 M18,12 L18,18" Stroke="#8D9AAF" StrokeThickness="1.7"/>
+              <StackPanel Grid.Column="1" Spacing="1">
+                <TextBlock Text="Игровые пресеты"/><TextBlock Text="GAME PROFILES" FontSize="10" Opacity="0.6"/>
+              </StackPanel>
+            </Grid>
+          </Button>
           <Button x:Name="NavRestore" Classes="nav" Click="Navigate_Click">
             <Grid ColumnDefinitions="30,*">
               <Path Width="18" Height="18" Data="M4,9 L4,3 L10,3 M4,4 C8,0 17,2 20,8 C23,15 17,22 10,21 C5,20 2,16 3,12" Stroke="#8D9AAF" StrokeThickness="1.7"/>
@@ -111,7 +130,7 @@
               <TextBlock Classes="small" TextWrapping="Wrap" Text="Без разгона, отключения защиты и скрытых твиков."/>
             </StackPanel>
           </Border>
-          <TextBlock Text="Версия 1.3 • Windows 11 x64" FontSize="11" Foreground="#5F6D81" Margin="8,0,0,4"/>
+          <TextBlock Text="Версия 1.5.0 • Windows 11 x64" FontSize="11" Foreground="#5F6D81" Margin="8,0,0,4"/>
         </StackPanel>
       </Grid>
     </Border>
@@ -254,6 +273,34 @@
           </StackPanel>
         </ScrollViewer>
 
+        <ScrollViewer x:Name="PresetsView" IsVisible="False">
+          <StackPanel Spacing="18" Margin="0,0,4,24">
+            <Border Classes="notice">
+              <StackPanel Spacing="7">
+                <TextBlock Classes="h3" Foreground="#72E2B9" Text="Один профиль — один простой A/B-тест"/>
+                <TextBlock x:Name="PresetReferenceText" Classes="muted" FontSize="13" TextWrapping="Wrap"/>
+                <TextBlock Classes="small" TextWrapping="Wrap" Text="Кнопка выбирает игру для автоопределения и запускает тест. Конфиги игры и профили драйвера FramePilot не изменяет."/>
+              </StackPanel>
+            </Border>
+            <Border Classes="panel">
+              <StackPanel Spacing="18">
+                <TextBlock Classes="h2" Text="Выберите игру"/>
+                <ComboBox x:Name="GamePresetSelector" MinHeight="48" MaxWidth="480" HorizontalAlignment="Left" SelectionChanged="GamePresetSelector_Changed" PlaceholderText="Выберите игру">
+                  <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding DisplayName}" FontSize="16"/></DataTemplate></ComboBox.ItemTemplate>
+                </ComboBox>
+                <StackPanel Spacing="5">
+                  <TextBlock x:Name="PresetGameTitle" Classes="h2"/>
+                  <TextBlock x:Name="PresetSubtitle" Classes="muted" FontSize="13" TextWrapping="Wrap"/>
+                </StackPanel>
+                <Border Classes="stat" MaxWidth="520" HorizontalAlignment="Left">
+                  <StackPanel Spacing="5"><TextBlock Classes="small" Text="ОПРЕДЕЛЯЕМЫЙ ПРОЦЕСС"/><TextBlock x:Name="PresetProcessText" Classes="h3" TextWrapping="Wrap"/></StackPanel>
+                </Border>
+                <Button x:Name="UsePresetButton" Classes="primary" Content="Применить и протестировать" Click="UsePreset_Click" HorizontalAlignment="Left" MinWidth="260"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
         <ScrollViewer x:Name="RestoreView" IsVisible="False">
           <StackPanel Spacing="18" Margin="0,0,4,24">
             <Grid ColumnDefinitions="1.5*,1*">
@@ -299,97 +346,62 @@
 
         <ScrollViewer x:Name="BenchmarkView" IsVisible="False">
           <StackPanel Spacing="18" Margin="0,0,4,24">
-            <Border Classes="panel">
-              <StackPanel Spacing="16">
-                <Grid ColumnDefinitions="*,Auto">
-                  <StackPanel Spacing="5"><TextBlock Classes="h2" Text="Игровой проект замера"/><TextBlock Classes="muted" FontSize="13" Text="Один проект объединяет игру, неизменную тестовую сцену и все серии ДО / ПОСЛЕ."/></StackPanel>
-                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                    <ComboBox x:Name="ProjectSelector" MinWidth="230" MinHeight="42" SelectionChanged="ProjectSelector_Changed" PlaceholderText="Выберите проект">
-                      <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding DisplayName}"/></DataTemplate></ComboBox.ItemTemplate>
-                    </ComboBox>
-                    <Button x:Name="NewProjectButton" Classes="secondary" Content="Новый проект" Click="NewProject_Click"/>
-                  </StackPanel>
-                </Grid>
-                <Grid ColumnDefinitions="1.45*,1*">
-                  <StackPanel Grid.Column="0" Spacing="12" Margin="0,0,20,0">
-                    <TextBox x:Name="ProjectNameInput" Watermark="Название: Cyberpunk 2077 — Ultra — тест 1"/>
-                    <Grid ColumnDefinitions="*,Auto"><TextBox x:Name="GamePathInput" Watermark="Путь к исполняемому файлу игры (.exe)"/><Button Grid.Column="1" Classes="secondary" Margin="10,0,0,0" Content="Выбрать EXE" Click="BrowseGame_Click"/></Grid>
-                    <TextBox x:Name="SceneInput" Watermark="Сцена: встроенный бенчмарк или одинаковый маршрут"/>
-                    <Grid ColumnDefinitions="*,*,88,88,88">
-                      <TextBox Grid.Column="0" x:Name="ResolutionInput" Watermark="2560×1440" Margin="0,0,10,0"/>
-                      <TextBox Grid.Column="1" x:Name="GraphicsPresetInput" Watermark="Ultra, без FG" Margin="0,0,10,0"/>
-                      <StackPanel Grid.Column="2" Spacing="4" Margin="0,0,8,0"><TextBlock Classes="small" Text="ЗАХВАТ, С"/><TextBox x:Name="DurationInput" Text="60" Watermark="15–600"/></StackPanel>
-                      <StackPanel Grid.Column="3" Spacing="4" Margin="0,0,8,0"><TextBlock Classes="small" Text="ПРОГРЕВ, С"/><TextBox x:Name="WarmupInput" Text="10" Watermark="0–60"/></StackPanel>
-                      <StackPanel Grid.Column="4" Spacing="4"><TextBlock Classes="small" Text="СЕРИЯ"/><TextBox x:Name="SeriesInput" Text="3" Watermark="1–5"/></StackPanel>
-                    </Grid>
-                    <TextBlock Classes="small" Text="Прогрев выполняется до запуска PresentMon и не попадает в CSV. Серия — отдельные прогоны с повторением сцены; после цели можно добавлять дополнительные замеры. Не меняйте условия между ДО и ПОСЛЕ." TextWrapping="Wrap"/>
-                  </StackPanel>
-                  <Border Grid.Column="1" Classes="notice">
-                    <StackPanel Spacing="10">
-                      <TextBlock x:Name="BenchmarkStageTitle" Classes="h3" Foreground="#72E2B9" Text="Шаг 1 — зафиксируйте результат ДО"/>
-                      <TextBlock x:Name="BenchmarkStageText" Classes="muted" FontSize="13" TextWrapping="Wrap" Text="Создайте проект до применения оптимизаций. Базовый замер станет точкой сравнения."/>
-                      <StackPanel Orientation="Horizontal" Spacing="10">
-                        <Button x:Name="SaveProjectButton" Classes="secondary" Content="Создать проект" Click="SaveProject_Click"/>
-                        <Button x:Name="OpenRunFolderButton" Classes="ghost" Content="Папка файлов" Click="OpenRunFolder_Click" IsEnabled="False"/>
-                      </StackPanel>
-                    </StackPanel>
-                  </Border>
-                </Grid>
+            <Border Classes="notice">
+              <StackPanel Spacing="7">
+                <TextBlock x:Name="BenchmarkStageTitle" Classes="h3" Foreground="#72E2B9" Text="Шаг 1 — измерьте текущий FPS"/>
+                <TextBlock x:Name="BenchmarkStageText" Classes="muted" FontSize="13" TextWrapping="Wrap" Text="Запустите игру, войдите в локацию и нажмите «Замер ДО». Один сеанс, не более 5 минут."/>
               </StackPanel>
             </Border>
 
-            <Grid ColumnDefinitions="1.45*,1*">
+            <Grid ColumnDefinitions="1.35*,1*">
               <Border Grid.Column="0" Classes="panel" Margin="0,0,16,0">
-                <StackPanel Spacing="14">
-                  <StackPanel Spacing="5"><TextBlock Classes="h2" Text="Автоматический захват кадров"/><TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="PresentMon работает отдельным ETW-процессом и не внедряется в игру. Выберите фактический игровой процесс, проверьте готовность и повторяйте одну сцену между прогонами. Прогрев идёт до записи CSV."/></StackPanel>
-                  <Grid ColumnDefinitions="*,Auto,Auto">
-                    <ComboBox Grid.Column="0" x:Name="GameProcessSelector" MinHeight="42" Margin="0,0,8,0" SelectionChanged="GameProcessSelector_Changed" PlaceholderText="Выберите игровой процесс">
-                      <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis"/></DataTemplate></ComboBox.ItemTemplate>
-                    </ComboBox>
-                    <Button Grid.Column="1" x:Name="RefreshProcessesButton" Classes="secondary" Content="Обновить" Margin="0,0,8,0" Click="RefreshProcesses_Click"/>
-                    <Button Grid.Column="2" x:Name="CheckCaptureReadinessButton" Classes="secondary" Content="Проверить готовность" Click="CheckCaptureReadiness_Click"/>
+                <StackPanel Spacing="15">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="5">
+                      <TextBlock Classes="small" Text="ОБНАРУЖЕННАЯ ИГРА"/>
+                      <TextBlock x:Name="DetectedGameText" Classes="h2" TextWrapping="Wrap" Text="Запустите поддерживаемую игру"/>
+                      <TextBlock x:Name="DetectedProcessText" Classes="muted" FontSize="13" Text="Tarkov, CS2, Rust или PUBG"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" x:Name="OpenRunFolderButton" Classes="ghost" Content="Файлы" Click="OpenRunFolder_Click" IsEnabled="False" VerticalAlignment="Top"/>
                   </Grid>
+                  <Grid ColumnDefinitions="*,*">
+                    <StackPanel Spacing="4"><TextBlock Classes="small" Text="РАЗРЕШЕНИЕ"/><TextBlock x:Name="DetectedResolutionText" Classes="h3" Text="Определяется"/></StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="4"><TextBlock Classes="small" Text="ТЕКУЩИЙ FPS"/><TextBlock x:Name="LiveFpsText" FontSize="36" FontWeight="Bold" Foreground="#65E1B4" Text="—"/></StackPanel>
+                  </Grid>
+                  <WrapPanel Orientation="Horizontal" ItemSpacing="10" LineSpacing="10">
+                    <Button x:Name="CaptureButton" Classes="primary" Content="Замер ДО" Click="CaptureBefore_Click" IsEnabled="False"/>
+                    <Button x:Name="AfterCaptureButton" Classes="primary" Content="Замер ПОСЛЕ" Click="CaptureAfter_Click" IsVisible="False"/>
+                    <Button x:Name="CancelCaptureButton" Classes="danger" Content="Остановить и сохранить" Click="CancelCapture_Click" IsVisible="False"/>
+                  </WrapPanel>
+                  <ProgressBar x:Name="CaptureProgress" Minimum="0" Maximum="300" Value="0" IsVisible="False"/>
+                  <TextBlock x:Name="CaptureStatusText" Classes="small" TextWrapping="Wrap" Text="Игра и разрешение определятся автоматически после запуска."/>
                   <TextBlock x:Name="HotkeyStatusText" Classes="small" Foreground="#72E2B9" TextWrapping="Wrap" Text="F9: регистрация глобальной клавиши при открытии окна…"/>
-                  <StackPanel Spacing="10">
-                    <WrapPanel Orientation="Horizontal" ItemSpacing="10" LineSpacing="10">
-                      <Button x:Name="LaunchGameButton" Classes="secondary" Content="Запустить игру" Click="LaunchGame_Click" IsEnabled="False"/>
-                      <Button x:Name="CaptureButton" Classes="primary" Content="Замер ДО" Click="CaptureBefore_Click" IsEnabled="False"/>
-                      <Button x:Name="AfterCaptureButton" Classes="primary" Content="Замер ПОСЛЕ" Click="CaptureAfter_Click" IsVisible="False"/>
-                      <Button x:Name="CancelCaptureButton" Classes="danger" Content="Остановить" Click="CancelCapture_Click" IsVisible="False"/>
-                    </WrapPanel>
-                    <Button x:Name="GoOptimizeButton" Classes="secondary" Content="Перейти к оптимизации" HorizontalAlignment="Left" Click="GoOptimize_Click" IsVisible="False"/>
-                  </StackPanel>
-                  <ProgressBar x:Name="CaptureProgress" Minimum="0" Maximum="100" Value="0" IsVisible="False"/>
-                  <TextBlock x:Name="CaptureStatusText" Classes="small" TextWrapping="Wrap" Text="CSV и итоговый отчёт сохраняются автоматически после каждого захвата."/>
-                  <Border Classes="notice" Padding="12"><TextBlock x:Name="SeriesStabilityText" Classes="small" TextWrapping="Wrap" Text="Серии появятся после создания проекта и первого замера."/></Border>
                 </StackPanel>
               </Border>
-              <Border Grid.Column="1" Classes="stat">
-                <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto">
-                  <StackPanel Grid.Column="0" Spacing="6" Margin="0,0,14,0"><TextBlock Classes="small" Text="ПАМЯТЬ"/><TextBlock x:Name="BenchmarkMemoryText" Classes="h3" Text="Определение…"/></StackPanel>
-                  <StackPanel Grid.Column="1" Spacing="6" Margin="0,0,14,0"><TextBlock Classes="small" Text="ЧАСТОТА"/><TextBlock x:Name="BenchmarkMemorySpeedText" Classes="h3" TextWrapping="Wrap" Text="Определение…"/></StackPanel>
-                  <StackPanel Grid.Column="2" Spacing="6"><TextBlock Classes="small" Text="КАНАЛЫ"/><TextBlock x:Name="BenchmarkMemoryChannelText" Classes="h3" Foreground="#65E1B4" TextWrapping="Wrap" Text="Определение…"/></StackPanel>
-                  <TextBlock Grid.Row="1" Grid.ColumnSpan="3" x:Name="BenchmarkMemoryDetailsText" Classes="small" TextWrapping="Wrap" Margin="0,10,0,0" Text="Конфигурация сохраняется вместе с каждым захватом."/>
-                </Grid>
+              <Border Grid.Column="1" Classes="panel">
+                <StackPanel Spacing="16">
+                  <TextBlock Classes="h2" Text="Короткий протокол"/>
+                  <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="1. Сыграйте в локацию и остановите замер ДО.&#10;2. Создайте откат и примените оптимизацию.&#10;3. Повторите ту же локацию в замере ПОСЛЕ.&#10;4. Посмотрите разницу."/>
+                  <Border Classes="stat"><StackPanel Spacing="10"><TextBlock x:Name="BeforeResultText" Classes="h3" TextWrapping="Wrap" Text="ДО: пока нет результата"/><TextBlock x:Name="AfterResultText" Classes="h3" TextWrapping="Wrap" Text="ПОСЛЕ: пока нет результата"/></StackPanel></Border>
+                  <TextBlock Classes="small" TextWrapping="Wrap" Text="Не меняйте разрешение, графику, сервер и маршрут между замерами."/>
+                </StackPanel>
               </Border>
             </Grid>
 
-            <Border Classes="panel" Padding="18">
-              <Grid ColumnDefinitions="Auto,*,*,*,Auto,Auto" VerticalAlignment="Center">
-                <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,18,0"><TextBlock Classes="h3" Text="Ручной режим"/><TextBlock Classes="small" Text="Если автозахват недоступен"/></StackPanel>
-                <TextBox Grid.Column="1" x:Name="ManualAvgInput" Watermark="Средний FPS" Margin="0,0,10,0"/>
-                <TextBox Grid.Column="2" x:Name="ManualLow1Input" Watermark="1% Low" Margin="0,0,10,0"/>
-                <TextBox Grid.Column="3" x:Name="ManualLow01Input" Watermark="0.1% Low" Margin="0,0,10,0"/>
-                <Button Grid.Column="4" x:Name="ManualCaptureButton" Classes="secondary" Content="ДО" Click="ManualBefore_Click" IsEnabled="False"/>
-                <Button Grid.Column="5" x:Name="ManualAfterButton" Classes="secondary" Content="ПОСЛЕ" Margin="10,0,0,0" Click="ManualAfter_Click" IsVisible="False"/>
-              </Grid>
+            <Border x:Name="GuidedOptimizePanel" Classes="notice" IsVisible="False">
+              <StackPanel Spacing="12">
+                <TextBlock Classes="h2" Foreground="#72E2B9" Text="База ДО сохранена"/>
+                <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="Теперь создайте резервную копию и точку восстановления, затем примените безопасный профиль Windows. Службы и HAGS в этом быстром сценарии не меняются."/>
+                <Button x:Name="GuidedOptimizeButton" Classes="primary" HorizontalAlignment="Left" Content="Создать точку восстановления и оптимизировать" Click="GuidedOptimize_Click"/>
+                <TextBlock x:Name="GuidedOptimizeLog" Classes="small" TextWrapping="Wrap"/>
+              </StackPanel>
             </Border>
 
             <Border x:Name="ComparisonResult" Classes="panel" IsVisible="False">
               <StackPanel Spacing="16">
                 <Grid ColumnDefinitions="*,Auto">
-                  <StackPanel Spacing="5"><TextBlock x:Name="ComparisonTitle" Classes="h2" Text="Сравнение ДО / ПОСЛЕ"/><TextBlock x:Name="ComparisonText" Classes="muted" FontSize="13" TextWrapping="Wrap"/></StackPanel>
-                  <TextBlock Grid.Column="1" Classes="small" VerticalAlignment="Center" Text="Порог подтверждения: ±3 %"/>
+                  <StackPanel Spacing="5"><TextBlock x:Name="ComparisonTitle" Classes="h2" Text="Разница ДО / ПОСЛЕ"/><TextBlock x:Name="ComparisonText" Classes="muted" FontSize="13" TextWrapping="Wrap"/></StackPanel>
+                  <TextBlock Grid.Column="1" Classes="small" VerticalAlignment="Center" Text="Порог изменения: ±3 %"/>
                 </Grid>
                 <Grid ColumnDefinitions="*,*,*,*">
                   <Border Grid.Column="0" Classes="stat" Margin="0,0,12,0"><StackPanel Spacing="7"><TextBlock Classes="small" Text="СРЕДНИЙ FPS"/><TextBlock x:Name="AvgResultText" Classes="h3"/><TextBlock x:Name="AvgDeltaText" FontSize="22" FontWeight="Bold"/><TextBlock x:Name="AvgStatusText" Classes="small" TextWrapping="Wrap"/></StackPanel></Border>
@@ -405,7 +417,7 @@
             <Grid ColumnDefinitions="1.45*,1*">
               <Border Grid.Column="0" Classes="panel" Margin="0,0,16,0">
                 <StackPanel Spacing="14">
-                  <TextBlock Classes="h2" Text="Замеры активного проекта"/>
+                  <TextBlock Classes="h2" Text="Сохранённые замеры"/>
                   <TextBlock x:Name="HistoryEmpty" Classes="muted" Text="Захватов пока нет. Первый результат станет базовым ДО."/>
                   <ItemsControl x:Name="CaptureHistoryList">
                     <ItemsControl.ItemTemplate><DataTemplate>

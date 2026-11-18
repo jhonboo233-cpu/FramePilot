@@ -125,9 +125,11 @@ public sealed class GameBenchmarkProject
     public string Scene { get; set; } = string.Empty;
     public string Resolution { get; set; } = string.Empty;
     public string GraphicsPreset { get; set; } = string.Empty;
-    public int CaptureSeconds { get; set; } = 60;
-    public int WarmupSeconds { get; set; } = 10;
-    public int RunsPerSeries { get; set; } = 3;
+    public string PresetId { get; set; } = string.Empty;
+    public string PresetName { get; set; } = string.Empty;
+    public int CaptureSeconds { get; set; } = 300;
+    public int WarmupSeconds { get; set; } = 0;
+    public int RunsPerSeries { get; set; } = 1;
     public string TargetProcessName { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public List<FrameCapture> Captures { get; set; } = new();
@@ -144,6 +146,7 @@ public sealed class GameProcessInfo
     public string ProcessName { get; set; } = string.Empty;
     public string ExecutablePath { get; set; } = string.Empty;
     public string MainWindowTitle { get; set; } = string.Empty;
+    public string DetectedResolution { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
 }
 
@@ -161,6 +164,16 @@ public sealed class CaptureProgressInfo
     public int TotalSeconds { get; set; }
     public int RunNumber { get; set; }
     public int TargetRuns { get; set; }
+    public double CurrentFps { get; set; }
+    public int FrameCount { get; set; }
+    public string Resolution { get; set; } = string.Empty;
+}
+
+public sealed class LiveCaptureMetrics
+{
+    public double CurrentFps { get; set; }
+    public int FrameCount { get; set; }
+    public string Resolution { get; set; } = string.Empty;
 }
 
 public sealed class PendingCapture
@@ -207,6 +220,7 @@ public sealed class CaptureEnvironment
     public string Scene { get; set; } = string.Empty;
     public string Resolution { get; set; } = string.Empty;
     public string GraphicsPreset { get; set; } = string.Empty;
+    public string PresetName { get; set; } = string.Empty;
     public string ProcessName { get; set; } = string.Empty;
 }
 
@@ -252,12 +266,7 @@ internal static class BenchmarkWorkflow
 {
     public static string SelectHotkeyStage(GameBenchmarkProject project, CaptureSummary? beforeSummary)
     {
-        var beforeCount = project.Captures.Count(x => x.Stage == "Before");
-        var afterCount = project.Captures.Count(x => x.Stage == "After");
-        if (afterCount > 0) return "After";
-        if (beforeCount == 0 || beforeCount < Math.Clamp(project.RunsPerSeries, 1, 5)) return "Before";
-        if (beforeSummary?.HasExcessiveSpread == true) return "Before";
-        return "After";
+        return project.Captures.Any(x => x.Stage == "Before") ? "After" : "Before";
     }
 }
 

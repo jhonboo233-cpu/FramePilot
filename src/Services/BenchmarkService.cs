@@ -20,9 +20,31 @@ internal sealed class BenchmarkService
         {
             Name = name.Trim(), GamePath = gamePath.Trim(), Scene = scene.Trim(),
             Resolution = resolution.Trim(), GraphicsPreset = graphicsPreset.Trim(),
-            CaptureSeconds = Math.Clamp(captureSeconds, 15, 600),
-            WarmupSeconds = Math.Clamp(warmupSeconds, 0, 60),
-            RunsPerSeries = Math.Clamp(runsPerSeries, 1, 5)
+            CaptureSeconds = Math.Clamp(captureSeconds, 15, 300),
+            WarmupSeconds = 0,
+            RunsPerSeries = 1
+        };
+        ProjectStore.Projects.Insert(0, project);
+        ProjectStore.ActiveProjectId = project.Id;
+        SaveProjects();
+        return project;
+    }
+
+    public GameBenchmarkProject CreateAutoProject(GamePreset preset, GameProcessInfo process)
+    {
+        var project = new GameBenchmarkProject
+        {
+            Name = preset.GameName + " — быстрый A/B",
+            GamePath = process.ExecutablePath,
+            Scene = "Одна и та же игровая локация",
+            Resolution = process.DetectedResolution,
+            GraphicsPreset = "Текущие настройки игры",
+            PresetId = preset.Id,
+            PresetName = preset.GameName,
+            TargetProcessName = preset.ProcessName,
+            CaptureSeconds = 300,
+            WarmupSeconds = 0,
+            RunsPerSeries = 1
         };
         ProjectStore.Projects.Insert(0, project);
         ProjectStore.ActiveProjectId = project.Id;
@@ -42,9 +64,9 @@ internal sealed class BenchmarkService
         project.Scene = scene.Trim();
         project.Resolution = resolution.Trim();
         project.GraphicsPreset = graphicsPreset.Trim();
-        project.CaptureSeconds = Math.Clamp(captureSeconds, 15, 600);
-        project.WarmupSeconds = Math.Clamp(warmupSeconds, 0, 60);
-        project.RunsPerSeries = Math.Clamp(runsPerSeries, 1, 5);
+        project.CaptureSeconds = Math.Clamp(captureSeconds, 15, FrameCaptureService.MaxContinuousCaptureSeconds);
+        project.WarmupSeconds = 0;
+        project.RunsPerSeries = 1;
         SaveProjects();
     }
 
@@ -100,17 +122,17 @@ internal sealed class BenchmarkService
             AfterRunCount = after.RunCount,
             BeforeSpread = before.SpreadPercent,
             AfterSpread = after.SpreadPercent,
-            IsStable = before.IsStable && after.IsStable
+            IsStable = before.RunCount > 1 && after.RunCount > 1 && before.IsStable && after.IsStable
         };
         var baseline = project.Captures.Where(x => x.Stage == "Before").OrderBy(x => x.CreatedAt).First();
         var latest = project.Captures.Where(x => x.Stage == "After").OrderByDescending(x => x.CreatedAt).First();
         AddEnvironmentWarnings(comparison, baseline.Environment, latest.Environment);
-        if (before.RunCount < 3 || after.RunCount < 3)
-            comparison.Warnings.Add("Результат предварительный: для надёжного вывода выполните минимум 3 замера ДО и 3 замера ПОСЛЕ.");
-        if (before.HasExcessiveSpread)
-            comparison.Warnings.Add($"Серия ДО нестабильна: разброс среднего FPS {before.SpreadPercent:0.#}% при пороге 5%. Повторите прогоны в той же сцене.");
-        if (after.HasExcessiveSpread)
-            comparison.Warnings.Add($"Серия ПОСЛЕ нестабильна: разброс среднего FPS {after.SpreadPercent:0.#}% при пороге 5%. Повторите прогоны в той же сцене.");
+        if (before.RunCount == 1 && after.RunCount == 1)
+            comparison.Warnings.Add("Сравнение выполнено по одному непрерывному замеру ДО и ПОСЛЕ. Это быстрый ориентир, а не статистическое доказательство прироста.");
+        if (before.RunCount > 1 && before.HasExcessiveSpread)
+            comparison.Warnings.Add($"В сохранённых замерах ДО разброс среднего FPS {before.SpreadPercent:0.#}%.");
+        if (after.RunCount > 1 && after.HasExcessiveSpread)
+            comparison.Warnings.Add($"В сохранённых замерах ПОСЛЕ разброс среднего FPS {after.SpreadPercent:0.#}%.");
         return comparison;
     }
 
@@ -138,6 +160,7 @@ internal sealed class BenchmarkService
         CompareCondition(before.MemoryChannel, after.MemoryChannel, "Изменился канальный режим памяти");
         CompareCondition(before.Resolution, after.Resolution, "Разрешение в замерах отличается");
         CompareCondition(before.GraphicsPreset, after.GraphicsPreset, "Графический пресет в замерах отличается");
+        CompareCondition(before.PresetName, after.PresetName, "Игровой пресет в замерах отличается");
         CompareCondition(before.Scene, after.Scene, "Описание тестовой сцены изменилось");
         CompareCondition(before.ProcessName, after.ProcessName, "Изменился захватываемый игровой процесс");
 
@@ -152,9 +175,9 @@ internal sealed class BenchmarkService
     {
         var fileName = string.IsNullOrWhiteSpace(capture.RawCsvFileName) ? capture.Id : capture.RawCsvFileName;
         var path = Path.Combine(AppStorage.GetProjectDirectory(project.Id), fileName + ".summary.txt");
-        var text = $"FramePilot 1.3 — {capture.StageLabel}\n" +
+        var text = $"FramePilot 1.5 — {capture.StageLabel}\n" +
                    $"Дата: {capture.CreatedAt:O}\nИгра: {project.Name}\nФайл: {project.GamePath}\n" +
-                   $"Игровой процесс: {capture.Environment.ProcessName}\n" +
+                   $"Игровой процесс: {capture.Environment.ProcessName}\nИгровой пресет: {capture.Environment.PresetName}\n" +
                    $"Сцена: {capture.Environment.Scene}\nРазрешение: {capture.Environment.Resolution}\n" +
                    $"Пресет: {capture.Environment.GraphicsPreset}\nРежим: {capture.ModeLabel}\n" +
                    $"Средний FPS: {capture.AverageFps:0.###}\n1% Low: {capture.Low1Fps:0.###}\n" +
